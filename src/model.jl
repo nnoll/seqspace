@@ -141,12 +141,6 @@ function update_dimension(model, dₒ; ϵ = 1e-6)
     )
 end
 
-# loss function factories
-reconstruction_loss(model, Ω) = (x) -> let
-    x̂ = model.identity(x)
-    return sum(ω*mse(x[i,:], x̂[i,:]) for (i,ω) in enumerate(Ω))
-end
-
 # data batching
 function batch(data, n)
     N = size(data,2)

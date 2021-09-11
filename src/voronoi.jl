@@ -1,14 +1,25 @@
 module Voronoi
 
 using MiniQhull
+using LinearAlgebra
 
 import ChainRulesCore: rrule, NO_FIELDS
 
 ∧(x,y) = x[1,:].*y[2,:] .- x[2,:].*y[1,:]
 
-# TODO: generalize to arbitrary dimension
-const boundary = [[-1;-1] [-1;+1] [+1;+1] [+1;-1]]
-const NB = size(boundary,2)
+function boundary(d)
+    d == 2 && return [[-1;-1] [-1;+1] [+1;+1] [+1;-1]]
+
+    b = zeros(d, 2^d)
+    for i in 0:(2^d-1)
+        for n in 0:(d-1)
+            b[n+1,i+1] = (((i >> n) & 1) == 1) ? +1 : -1
+        end
+    end
+    return b
+end
+
+const NB = 4
 function tessellation(q)
     # q = hcat(boundary, x)
     triangulation = delaunay(q)
@@ -42,7 +53,7 @@ function tessellation(q)
 end
 
 function areas(x)
-    q = hcat(boundary, x)
+    q = hcat(boundary(2), x)
     triangulation = delaunay(q)
 
     a = 0.5*[ 
@@ -58,7 +69,7 @@ function areas(x)
 end
 
 function rrule(::typeof(areas), x)
-    q = hcat(boundary, x)
+    q = hcat(boundary(2), x)
     triangulation = delaunay(q)
 
     a = 0.5*[ 
@@ -94,5 +105,19 @@ function rrule(::typeof(areas), x)
 
 end
 
+# derivative of det given by adjugate (which is just rescaled inverse)
+# see https://en.wikipedia.org/wiki/Adjugate_matrix
+
+volume(simplex) = det(vcat(simplex, ones(1, size(simplex,2))))
+
+function volumes(x)
+    d = size(x,1)
+    q = hcat(boundary(d), x)
+
+    simplices = delaunay(q)
+
+    Ω = [ volume(hcat((q[:,i] for i in simplex)...)) for simplex in eachcol(simplices) ]
+    return Ω ./ factorial(d)
+end
 
 end

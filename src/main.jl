@@ -8,12 +8,12 @@ using Flux, Zygote
 
 import BSON
 
-include("geo.jl")
 include("io.jl")
 include("rank.jl")
 include("model.jl")
 include("hilbert.jl")
 include("voronoi.jl")
+include("pointcloud.jl")
 
 using .PointCloud, .DataIO, .SoftRank, .ML
 
@@ -118,7 +118,7 @@ function buildloss(model, D², param)
         # distance softranks
         D̂² = distance²(z)
         D̄² = D²[i,i]
-        
+
         ϵₛ = mean(
             let
                 d, d̂ = D̄²[:,j], D̂²[:,j]
@@ -130,27 +130,21 @@ function buildloss(model, D², param)
         # FIXME: allow for higher dimensionality than 2
         ϵᵤ = let
             a = Voronoi.areas(z[1:2,:])
-            std(a) / mean(a) + mean(
-                # FIXME: remove when we can compute volumes in d > 2
-                let
-                    zₛ = sort(z[d,:])
-                    mean( ( (2*i/length(zₛ)-1) - s)^2 for (i,s) in enumerate(zₛ) )
-                end for d ∈ 3:size(z,1)
-            )
+            std(a) / mean(a)
         end
 
         if log
             @show ϵᵣ, ϵₛ, ϵᵤ
         end
 
-        return ϵᵣ + param.γₛ*ϵₛ + param.γᵤ*ϵᵤ
+        return ϵᵣ + param.γₛ*ϵₛ + param.γᵤ*ϵᵤ + mean(sum(z[3:end,:].^2,dims=2))
      end
 end
 
 # ------------------------------------------------------------------------
 # main functions
 
-function linearprojection(x, d; Δ=1, Λ=nothing) 
+function linearprojection(x, d; Δ=1, Λ=nothing)
     Λ = isnothing(Λ) ? svd(x) : Λ
 
 	ψ = Λ.Vt
@@ -223,7 +217,7 @@ function main(input, niter, output)
     open(input, "r") do io 
         params = eval(Meta.parse(read(io, String)))
     end
-    
+
     result, data = run(params, niter)
     @save "$root/result/$output.bson" result data
 end

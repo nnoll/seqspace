@@ -6,7 +6,7 @@ using Plots
 include("src/scrna.jl")
 include("src/mle.jl")
 include("src/util.jl")
-include("src/geo.jl")
+include("src/pointcloud.jl")
 
 using .scRNA, .Utility, .PointCloud
 
