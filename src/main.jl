@@ -119,7 +119,7 @@ function buildloss(model, D², param)
         D̂² = Distances.euclidean²(z)
         D̄² = D²[i,i]
 
-        ϵₛ = mean(
+        ϵᵣ = mean(
             let
                 d, d̂ = D̄²[:,j], D̂²[:,j]
                 r, r̂ = softrank(d ./ mean(d)), softrank(d̂ ./ mean(d̂))
@@ -137,7 +137,7 @@ function buildloss(model, D², param)
             @show ϵᵣ, ϵₛ, ϵᵤ
         end
 
-        return ϵᵣ + param.γₛ*ϵₛ + param.γᵤ*ϵᵤ + mean(sum(z[3:end,:].^2,dims=2))
+        return ϵᵣ + param.γᵣ*ϵᵣ + param.γᵤ*ϵᵤ #+ mean(sum(z[3:end,:].^2,dims=2))
      end
 end
 
