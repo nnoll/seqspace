@@ -11,7 +11,6 @@ import BSON
 include("io.jl")
 include("rank.jl")
 include("model.jl")
-# include("hilbert.jl")
 include("voronoi.jl")
 include("distance.jl")
 include("pointcloud.jl")

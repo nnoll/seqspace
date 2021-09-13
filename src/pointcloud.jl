@@ -12,6 +12,9 @@ import ChainRulesCore:
 include("queue.jl")
 using .PriorityQueue
 
+include("distance.jl")
+using .Distances
+
 export embed, upper_tri
 export neighborhood, geodesics, mds, isomap, scaling
 
@@ -125,7 +128,7 @@ length(G :: Graph) = length(G.verts)
 # operations
 
 function neighborhood(x, k :: T; D=missing, accept=(d)->true) where T <: Integer
-    D = ismissing(D) ? distance(x) : D
+    D = ismissing(D) ? euclidean(x) : D
     G = Graph([Vertex(x[:,i]) for i ∈ 1:size(x,2)])
     for i ∈ 1:size(D,1)
         neighbor = sortperm(D[i,:])[2:end]
@@ -136,7 +139,7 @@ function neighborhood(x, k :: T; D=missing, accept=(d)->true) where T <: Integer
 end
 
 function neighborhood(x, k :: T; D=missing, accept=(d)->true) where T <: AbstractFloat
-    D = ismissing(D) ? distance(x) : D
+    D = ismissing(D) ? euclidean(x) : D
     G = Graph([Vertex(x[:,i]) for i ∈ 1:size(x,2)])
     for i ∈ 1:size(D,1)
         neighbor = first.(findall(0 .< D[:,i] .< k))
