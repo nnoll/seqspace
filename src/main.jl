@@ -11,7 +11,7 @@ import BSON
 include("io.jl")
 include("rank.jl")
 include("model.jl")
-include("hilbert.jl")
+# include("hilbert.jl")
 include("voronoi.jl")
 include("pointcloud.jl")
 
@@ -154,8 +154,8 @@ function linearprojection(x, d; Δ=1, Λ=nothing)
 
     x₀ = F.U[:,1:Δ]*Diagonal(F.S[1:Δ])*F.Vt[1:Δ,:]
 	return (
-        projection = ψ[ι,:] .- μ[ι] 
-        embed = (x) -> (x₀ .+ (F.U[:,ι]*Diagonal(F.S[ι]))*(x.+μ[ι]))
+        projection = ψ[ι,:] .- μ[ι]
+        embed = (x) -> (x₀ .+ (F.U[:,ι]*Diagonal(F.S[ι])*(x.+μ[ι])
     )
 end
 
