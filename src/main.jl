@@ -134,7 +134,7 @@ function buildloss(model, D², param)
         end
 
         if log
-            @show ϵᵣ, ϵₛ, ϵᵤ
+            @show ϵᵣ, ϵᵣ, ϵᵤ
         end
 
         return ϵᵣ + param.γᵣ*ϵᵣ + param.γᵤ*ϵᵤ #+ mean(sum(z[3:end,:].^2,dims=2))
