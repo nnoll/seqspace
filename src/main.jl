@@ -160,15 +160,15 @@ function linearprojection(x, d; Δ=1, Λ=nothing)
 end
 
 function run(data, param; D²=nothing)
-    D² = isnothing(D²) ? geodesics(x⃗, param.k).^2 : D²
+    D² = isnothing(D²) ? geodesics(data, param.k).^2 : D²
 
-    M = model(size(x⃗, 1), param.dₒ; 
+    M = model(size(data, 1), param.dₒ; 
           Ws         = param.Ws, 
           normalizes = param.BN, 
           dropouts   = param.DO
     )
 
-    y⃗, I = validate(x⃗, param.V)
+    batch, index = validate(data, param.V)
 
     R          = ball(D², param.k)
     vecnorm(x) = sum(norm.(eachcol(x)))
@@ -183,21 +183,21 @@ function run(data, param; D²=nothing)
         if (n-1) % param.δ == 0 
             @show n
 
-            push!(E.train,loss(y⃗.train, I.train, true))
-            push!(E.valid,loss(y⃗.valid, I.valid, true))
+            push!(E.train,loss(batch.train, index.train, true))
+            push!(E.valid,loss(batch.valid, index.valid, true))
         end
 
         nothing
     end
 
-    train!(M, y⃗.train, I.train, loss; 
+    train!(M, batch.train, index.train, loss; 
         η   = param.η, 
         B   = param.B, 
         N   = param.N, 
         log = log
     )
 
-    return Result(param, E, M), (x=x⃗, map=ϕ, y=y⃗, index=I, D²=D², log=log)
+    return Result(param, E, M), (map=ϕ, batch=batch, index=index, D²=D², log=log)
 end
 
 function extendrun(result::Result, input, epochs)
