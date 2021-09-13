@@ -37,7 +37,7 @@ mutable struct HyperParams
     η  :: Float64      # learning rate
     B  :: Int          # batch size
     V  :: Int          # number of points to partition for validation
-    k :: Int           # number of neighbors to use to estimate geodesics
+    k  :: Int          # number of neighbors to use to estimate geodesics
     γᵤ :: Float64      # prefactor of uniform density loss
     γᵣ :: Float64      # prefactor of distance soft rank loss
 end
@@ -117,7 +117,7 @@ function buildloss(model, D², param)
         ϵᵣ = sum(sum((x.-x̂).^2, dims=2)) / sum(sum(x.^2,dims=2))
 
         # distance softranks
-        D̂² = PointCloud.distance²(z)
+        D̂² = Distances.euclidean²(z)
         D̄² = D²[i,i]
 
         ϵₛ = mean(
@@ -155,8 +155,8 @@ function linearprojection(x, d; Δ=1, Λ=nothing)
 
     x₀ = F.U[:,1:Δ]*Diagonal(F.S[1:Δ])*F.Vt[1:Δ,:]
 	return (
-        projection = ψ[ι,:] .- μ[ι]
-        embed = (x) -> (x₀ .+ (F.U[:,ι]*Diagonal(F.S[ι])*(x.+μ[ι])
+        projection = ψ[ι,:] .- μ[ι],
+        embed = (x) -> (x₀ .+ (F.U[:,ι]*Diagonal(F.S[ι])*(x.+μ[ι])))
     )
 end
 
