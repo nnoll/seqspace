@@ -13,6 +13,7 @@ include("rank.jl")
 include("model.jl")
 # include("hilbert.jl")
 include("voronoi.jl")
+include("distance.jl")
 include("pointcloud.jl")
 
 using .PointCloud, .DataIO, .SoftRank, .ML
@@ -116,7 +117,7 @@ function buildloss(model, D², param)
         ϵᵣ = sum(sum((x.-x̂).^2, dims=2)) / sum(sum(x.^2,dims=2))
 
         # distance softranks
-        D̂² = distance²(z)
+        D̂² = PointCloud.distance²(z)
         D̄² = D²[i,i]
 
         ϵₛ = mean(
@@ -162,9 +163,9 @@ end
 function run(data, param; D²=nothing)
     D² = isnothing(D²) ? geodesics(data, param.k).^2 : D²
 
-    M = model(size(data, 1), param.dₒ; 
-          Ws         = param.Ws, 
-          normalizes = param.BN, 
+    M = model(size(data, 1), param.dₒ;
+          Ws         = param.Ws,
+          normalizes = param.BN,
           dropouts   = param.DO
     )
 
