@@ -38,10 +38,10 @@ mutable struct HyperParams
     V  :: Int          # number of points to partition for validation
     k  :: Int          # number of neighbors to use to estimate geodesics
     γᵤ :: Float64      # prefactor of uniform density loss
-    γᵣ :: Float64      # prefactor of distance soft rank loss
+    γₓ :: Float64      # prefactor of distance soft rank loss
 end
 
-HyperParams(; dₒ=3, Ws=Int[], BN=Int[], DO=Int[], N=500, δ=5, η=5e-4, B=64, V=81, k=12, γᵤ=1, γᵣ=1) = HyperParams(dₒ, Ws, BN, DO, N, δ, η, B, V, k, γᵤ, γᵣ)
+HyperParams(; dₒ=3, Ws=Int[], BN=Int[], DO=Int[], N=200, δ=10, η=1e-3, B=64, V=81, k=12, γᵣ=1, γᵤ=1e-1) = HyperParams(dₒ, Ws, BN, DO, N, δ, η, B, V, k, γᵤ, γᵣ)
 
 struct Result
     param :: HyperParams
@@ -93,46 +93,67 @@ function load(io)
     result, input = database[:result], database[:in]
 end
 
+# XXX: can you refactor to be less repetitive ?
 function buildloss(model, D², param)
-    clamp(x) = if x > 1
-        1
-    elseif x < 0
-        0
+    if param.γᵤ == 0
+        (x, i, log) -> begin
+            z = model.pullback(x)
+            x̂ = model.pushforward(z)
+
+            # reconstruction loss
+            ϵᵣ = sum(sum((x.-x̂).^2, dims=2)) / sum(sum(x.^2,dims=2))
+
+            # distance softranks
+            D̂² = Distances.euclidean²(z)
+            D̄² = D²[i,i]
+
+            ϵₓ = mean(
+                let
+                    d, d̂ = D̄²[:,j], D̂²[:,j]
+                    r, r̂ = softrank(d ./ mean(d)), softrank(d̂ ./ mean(d̂))
+                    1 - cov(r, r̂)/sqrt(var(r)*var(r̂))
+                end for j ∈ 1:size(D̂²,2)
+            )
+
+            if log
+                @show ϵᵣ, ϵₓ
+            end
+
+            return ϵᵣ + param.γₓ*ϵₓ
+        end
     else
-        x
+        (x, i, log) -> begin
+            z = model.pullback(x)
+            x̂ = model.pushforward(z)
+
+            # reconstruction loss
+            ϵᵣ = sum(sum((x.-x̂).^2, dims=2)) / sum(sum(x.^2,dims=2))
+
+            # distance softranks
+            D̂² = Distances.euclidean²(z)
+            D̄² = D²[i,i]
+
+            ϵᵣ = mean(
+                let
+                    d, d̂ = D̄²[:,j], D̂²[:,j]
+                    r, r̂ = softrank(d ./ mean(d)), softrank(d̂ ./ mean(d̂))
+                    1 - cov(r, r̂)/sqrt(var(r)*var(r̂))
+                end for j ∈ 1:size(D̂²,2)
+            )
+
+            # FIXME: allow for higher dimensionality than 2
+            ϵᵤ = let
+                a = Voronoi.areas(z[1:2,:])
+                std(a) / mean(a)
+            end
+
+            if log
+                @show ϵᵣ, ϵᵣ, ϵᵤ
+            end
+
+            return ϵᵣ + param.γₓ*ϵₓ + param.γᵤ*ϵᵤ
+        end
     end
-
-    (x, i, log) -> begin
-        z = model.pullback(x)
-        x̂ = model.pushforward(z)
-
-        # reconstruction loss
-        ϵᵣ = sum(sum((x.-x̂).^2, dims=2)) / sum(sum(x.^2,dims=2))
-
-        # distance softranks
-        D̂² = Distances.euclidean²(z)
-        D̄² = D²[i,i]
-
-        ϵᵣ = mean(
-            let
-                d, d̂ = D̄²[:,j], D̂²[:,j]
-                r, r̂ = softrank(d ./ mean(d)), softrank(d̂ ./ mean(d̂))
-                1 - cov(r, r̂)/sqrt(var(r)*var(r̂))
-            end for j ∈ 1:size(D̂²,2)
-        )
-
-        # FIXME: allow for higher dimensionality than 2
-        ϵᵤ = let
-            a = Voronoi.areas(z[1:2,:])
-            std(a) / mean(a)
-        end
-
-        if log
-            @show ϵᵣ, ϵᵣ, ϵᵤ
-        end
-
-        return ϵᵣ + param.γᵣ*ϵᵣ + param.γᵤ*ϵᵤ #+ mean(sum(z[3:end,:].^2,dims=2))
-     end
 end
 
 # ------------------------------------------------------------------------
