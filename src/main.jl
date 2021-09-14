@@ -2,8 +2,8 @@ module SeqSpace
 
 using GZip
 using BSON: @save
-using LinearAlgebra: norm
-using Statistics: quantile
+using LinearAlgebra: norm, svd, Diagonal
+using Statistics: quantile, mean
 using Flux, Zygote
 
 import BSON
@@ -80,12 +80,6 @@ function expression(;raw=false)
     return scrna, genes
 end
 
-mean(x)    = sum(x) / length(x)
-median(x)  = sort(x)[length(x)÷2+1]
-var(x)     = mean((x.-mean(x)).^2)
-std(x)     = sqrt(var(x))
-cov(x,y)   = mean((x.-mean(x)) .* (y.-mean(y)))
-
 ball(D, k) = [ sort(view(D,:,i))[k+1] for i in 1:size(D,2) ]
 
 # ------------------------------------------------------------------------
@@ -152,10 +146,10 @@ function linearprojection(x, d; Δ=1, Λ=nothing)
     λ = Λ.S ./ sum(Λ.S)
     ι = (1:d) .+ Δ
 
-    x₀ = F.U[:,1:Δ]*Diagonal(F.S[1:Δ])*F.Vt[1:Δ,:]
+    x₀ = Λ.U[:,1:Δ]*Diagonal(Λ.S[1:Δ])*Λ.Vt[1:Δ,:]
 	return (
         projection = ψ[ι,:] .- μ[ι],
-        embed = (x) -> (x₀ .+ (F.U[:,ι]*Diagonal(F.S[ι])*(x.+μ[ι])))
+        embed = (x) -> (x₀ .+ (Λ.U[:,ι]*Diagonal(Λ.S[ι])*(x.+μ[ι])))
     )
 end
 
