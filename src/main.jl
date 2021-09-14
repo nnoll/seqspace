@@ -163,15 +163,14 @@ end
 function linearprojection(x, d; Δ=1, Λ=nothing)
     Λ = isnothing(Λ) ? svd(x) : Λ
 
-	ψ = Λ.Vt
-	μ = mean(ψ, dims=2)
-    λ = Λ.S ./ sum(Λ.S)
     ι = (1:d) .+ Δ
+    ψ = Diagonal(Λ.S[ι])*Λ.Vt[ι,:]
+	μ = mean(ψ, dims=2)
 
     x₀ = Λ.U[:,1:Δ]*Diagonal(Λ.S[1:Δ])*Λ.Vt[1:Δ,:]
 	return (
-        projection = ψ[ι,:] .- μ[ι],
-        embed = (x) -> (x₀ .+ (Λ.U[:,ι]*Diagonal(Λ.S[ι])*(x.+μ[ι])))
+        projection = ψ .- μ,
+        embed = (x) -> (x₀ .+ (Λ.U[:,ι]*(x.+μ)))
     )
 end
 
