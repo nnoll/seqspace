@@ -170,9 +170,9 @@ function linearprojection(x, d; Δ=1, Λ=nothing)
     ψ = Diagonal(Λ.S[ι])*Λ.Vt[ι,:]
 	μ = mean(ψ, dims=2)
 
-    x₀ = Λ.U[:,1:Δ]*Diagonal(Λ.S[1:Δ])*Λ.Vt[1:Δ,:]
+    x₀ = (Δ > 0) ? Λ.U[:,1:Δ]*Diagonal(Λ.S[1:Δ])*Λ.Vt[1:Δ,:] : 0
 	return (
-        projection = ψ .- μ,
+        projection = (ψ .- μ),
         embed = (x) -> (x₀ .+ (Λ.U[:,ι]*(x.+μ)))
     )
 end
