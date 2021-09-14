@@ -48,12 +48,12 @@ function cohortdatabase(stage::Int)
     )
 end
 
-function virtualembryo()
-    expression, _, genes = GZip.open("$root/drosophila/dvex/bdtnp.txt.gz") do io
+function virtualembryo(;directory="/home/nolln/code/bio/seqspace/data/embryo")
+    expression, _, genes = GZip.open("$directory/bdtnp.txt.gz") do io
         read_matrix(io; named_cols=true)
     end
 
-    positions, _, _, = GZip.open("$root/drosophila/dvex/geometry_reduced.txt.gz") do io
+    positions, _, _, = GZip.open("$directory/geometry_reduced.txt.gz") do io
         read_matrix(io; named_cols=true)
     end
 
@@ -289,8 +289,8 @@ function inversion()
     )
 end
 
-function inversion(counts, genes; ν=nothing, ω=nothing)
-    ref, pointcloud = virtualembryo()
+function inversion(counts, genes; ν=nothing, ω=nothing, refdb=nothing)
+    ref, pointcloud = refdb === nothing ? virtualembryo() : refdb
     qry = (
         data = counts', 
         gene = columns(genes),
