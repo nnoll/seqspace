@@ -3,7 +3,7 @@ module SeqSpace
 using GZip
 using BSON: @save
 using LinearAlgebra: norm, svd, Diagonal
-using Statistics: quantile, mean
+using Statistics: quantile, mean, std, cov, var
 using Flux, Zygote
 
 import BSON
@@ -117,7 +117,7 @@ function buildloss(model, D², param)
             let
                 d, d̂ = D̄²[:,j], D̂²[:,j]
                 r, r̂ = softrank(d ./ mean(d)), softrank(d̂ ./ mean(d̂))
-                1 - cov(r, r̂)/(std(r)*std(r̂))
+                1 - cov(r, r̂)/sqrt(var(r)*var(r̂))
             end for j ∈ 1:size(D̂²,2)
         )
 
