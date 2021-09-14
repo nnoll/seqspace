@@ -39,9 +39,10 @@ mutable struct HyperParams
     k  :: Int          # number of neighbors to use to estimate geodesics
     γᵤ :: Float64      # prefactor of uniform density loss
     γₓ :: Float64      # prefactor of distance soft rank loss
+    ψ  :: Function     # transformation applied to latent space before computing euclidean distance
 end
 
-HyperParams(; dₒ=3, Ws=Int[], BN=Int[], DO=Int[], N=200, δ=10, η=1e-3, B=64, V=81, k=12, γᵣ=1, γᵤ=1e-1) = HyperParams(dₒ, Ws, BN, DO, N, δ, η, B, V, k, γᵤ, γᵣ)
+HyperParams(; dₒ=3, Ws=Int[], BN=Int[], DO=Int[], N=200, δ=10, η=1e-3, B=64, V=81, k=12, γᵣ=1, γᵤ=1e-1, ψ=(x)->x) = HyperParams(dₒ, Ws, BN, DO, N, δ, η, B, V, k, γᵤ, γᵣ, ψ)
 
 struct Result
     param :: HyperParams
@@ -104,7 +105,7 @@ function buildloss(model, D², param)
             ϵᵣ = sum(sum((x.-x̂).^2, dims=2)) / sum(sum(x.^2,dims=2))
 
             # distance softranks
-            D̂² = Distances.euclidean²(z)
+            D̂² = Distances.euclidean²(param.ψ(z))
             D̄² = D²[i,i]
 
             ϵₓ = mean(
@@ -130,7 +131,7 @@ function buildloss(model, D², param)
             ϵᵣ = sum(sum((x.-x̂).^2, dims=2)) / sum(sum(x.^2,dims=2))
 
             # distance softranks
-            D̂² = Distances.euclidean²(z)
+            D̂² = Distances.euclidean²(param.ψ(z))
             D̄² = D²[i,i]
 
             ϵᵣ = mean(
