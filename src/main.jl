@@ -3,7 +3,7 @@ module SeqSpace
 using GZip
 using BSON: @save
 using LinearAlgebra: norm, svd, Diagonal
-using Statistics: quantile, mean, std, cov, var
+using Statistics: quantile, mean, std, cor, cov, var
 using Flux, Zygote
 
 import BSON
@@ -40,10 +40,21 @@ mutable struct HyperParams
     γₓ :: Float64      # prefactor of distance soft rank loss
     γᵤ :: Float64      # prefactor of uniform density loss
     γₗ :: Float64      # prefactor of latent space extra dimensions
-    ψ  :: Function     # transformation applied to latent space before computing euclidean distance
+    g  :: Function     # metric given to latent space
 end
 
-HyperParams(; dₒ=3, Ws=Int[], BN=Int[], DO=Int[], N=200, δ=10, η=1e-3, B=64, V=81, k=12, γₓ=1, γᵤ=1e-1, γₗ=100, ψ=(x)->x) = HyperParams(dₒ, Ws, BN, DO, N, δ, η, B, V, k, γₓ, γᵤ, γₗ, ψ)
+const euclidean²(x) = sum( (x[d,:]' .- x[d,:]).^2 for d in 1:size(x,1) )
+function cylinder²(x) 
+    c = cos.(π.*(x[1,:]))
+    s = sin.(π.*(x[1,:]))
+
+    # Δ = .√((c' .- c).^2 .+ (s' .- s).^2) 
+
+    # return 4*asin.(Δ./2).^2 .+ euclidean²(x[2:end,:])
+    return (c' .- c).^2 .+ (s' .- s).^2 .+ euclidean²(x[2:end,:])
+end
+
+HyperParams(; dₒ=3, Ws=Int[], BN=Int[], DO=Int[], N=200, δ=10, η=1e-3, B=64, V=81, k=12, γₓ=1, γᵤ=1e-1, γₗ=100, g=euclidean²) = HyperParams(dₒ, Ws, BN, DO, N, δ, η, B, V, k, γₓ, γᵤ, γₗ, g)
 
 struct Result
     param :: HyperParams
@@ -93,8 +104,6 @@ function load(io)
     result, input = database[:result], database[:in]
 end
 
-euclidean²(x) = sum( (x[d,:]' .- x[d,:]).^2 for d in 1:size(x,1) )
-
 # XXX: can you refactor to be less repetitive ?
 function buildloss(model, D², param)
     if param.γᵤ == 0
@@ -106,7 +115,7 @@ function buildloss(model, D², param)
             ϵᵣ = sum(sum((x.-x̂).^2, dims=2)) / sum(sum(x.^2, dims=2))
 
             # distance softranks
-            D̂² = euclidean²(param.ψ(z))
+            D̂² = param.g(z)
             D̄² = D²[i,i]
 
             ϵₓ = mean(
@@ -132,7 +141,7 @@ function buildloss(model, D², param)
             ϵᵣ = sum(sum((x.-x̂).^2, dims=2)) / sum(sum(x.^2,dims=2))
 
             # distance softranks
-            D̂² = euclidean²(param.ψ(z))
+            D̂² = param.g(z)
             D̄² = D²[i,i]
 
             ϵₓ = mean(
