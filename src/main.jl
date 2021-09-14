@@ -82,8 +82,6 @@ function expression(;raw=false)
     return scrna, genes
 end
 
-ball(D, k) = [ sort(view(D,:,i))[k+1] for i in 1:size(D,2) ]
-
 # ------------------------------------------------------------------------
 # i/o
 
@@ -95,18 +93,20 @@ function load(io)
     result, input = database[:result], database[:in]
 end
 
+euclidean²(x) = sum( (x[d,:]' .- x[d,:]).^2 for d in 1:size(x,1) )
+
 # XXX: can you refactor to be less repetitive ?
 function buildloss(model, D², param)
     if param.γᵤ == 0
-        (x, i, log) -> let
+        function(x, i, log)
             z = model.pullback(x)
             x̂ = model.pushforward(z)
 
             # reconstruction loss
-            ϵᵣ = sum(sum((x.-x̂).^2, dims=2)) / sum(sum(x.^2,dims=2))
+            ϵᵣ = sum(sum((x.-x̂).^2, dims=2)) / sum(sum(x.^2, dims=2))
 
             # distance softranks
-            D̂² = Distances.euclidean²(param.ψ(z))
+            D̂² = euclidean²(param.ψ(z))
             D̄² = D²[i,i]
 
             ϵₓ = mean(
@@ -124,7 +124,7 @@ function buildloss(model, D², param)
             return ϵᵣ + param.γₓ*ϵₓ
         end
     else
-        (x, i, log) -> let
+        function(x, i, log)
             z = model.pullback(x)
             x̂ = model.pushforward(z)
 
@@ -132,7 +132,7 @@ function buildloss(model, D², param)
             ϵᵣ = sum(sum((x.-x̂).^2, dims=2)) / sum(sum(x.^2,dims=2))
 
             # distance softranks
-            D̂² = Distances.euclidean²(param.ψ(z))
+            D̂² = euclidean²(param.ψ(z))
             D̄² = D²[i,i]
 
             ϵₓ = mean(
