@@ -335,7 +335,7 @@ function normalize(seq::Count; β₀=1, δβ¯²=10)
     return (
         normalized = Count(Z, seq.cell, seq.gene),
         transform = (norm) -> let 
-            seq = Diagonal(1./(r.*.u)) * norm * Diagonal(1./(c.*v))
+            seq = Diagonal(1 ./(r.*u)) * norm * Diagonal(1 ./(c.*v))
             depth = sum(seq,dims=1)
             scale = mean(vec(depth))
 
