@@ -191,7 +191,7 @@ function run(data, param; D²=nothing)
         log = log
     )
 
-    return Result(param, E, M), (map=ϕ, batch=batch, index=index, D²=D², log=log)
+    return Result(param, E, M), (batch=batch, index=index, D²=D², log=log)
 end
 
 function extendrun(result::Result, input, epochs)
