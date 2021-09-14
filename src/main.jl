@@ -37,12 +37,13 @@ mutable struct HyperParams
     B  :: Int          # batch size
     V  :: Int          # number of points to partition for validation
     k  :: Int          # number of neighbors to use to estimate geodesics
-    γᵤ :: Float64      # prefactor of uniform density loss
     γₓ :: Float64      # prefactor of distance soft rank loss
+    γᵤ :: Float64      # prefactor of uniform density loss
+    γₗ :: Float64      # prefactor of latent space extra dimensions
     ψ  :: Function     # transformation applied to latent space before computing euclidean distance
 end
 
-HyperParams(; dₒ=3, Ws=Int[], BN=Int[], DO=Int[], N=200, δ=10, η=1e-3, B=64, V=81, k=12, γᵣ=1, γᵤ=1e-1, ψ=(x)->x) = HyperParams(dₒ, Ws, BN, DO, N, δ, η, B, V, k, γᵤ, γᵣ, ψ)
+HyperParams(; dₒ=3, Ws=Int[], BN=Int[], DO=Int[], N=200, δ=10, η=1e-3, B=64, V=81, k=12, γₓ=1, γᵤ=1e-1, γₗ=100, ψ=(x)->x) = HyperParams(dₒ, Ws, BN, DO, N, δ, η, B, V, k, γₓ, γᵤ, γₗ, ψ)
 
 struct Result
     param :: HyperParams
@@ -148,11 +149,13 @@ function buildloss(model, D², param)
                 std(a) / mean(a)
             end
 
+            ϵₗ = (size(z,1) ≤ 2) ? 0 : mean(sum(z[3:end,:].^2,dims=1))
+
             if log
-                @show ϵᵣ, ϵᵣ, ϵᵤ
+                @show ϵᵣ, ϵₓ, ϵᵤ, ϵₗ
             end
 
-            return ϵᵣ + param.γₓ*ϵₓ + param.γᵤ*ϵᵤ
+            return ϵᵣ + param.γₓ*ϵₓ + param.γᵤ*ϵᵤ + param.γₗ*ϵₗ
         end
     end
 end
@@ -184,9 +187,6 @@ function run(data, param; D²=nothing)
     )
 
     batch, index = validate(data, param.V)
-
-    R          = ball(D², param.k)
-    vecnorm(x) = sum(norm.(eachcol(x)))
 
     loss = buildloss(M, D², param)
     E    = (

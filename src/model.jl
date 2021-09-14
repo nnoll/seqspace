@@ -16,7 +16,6 @@ export model, train!, validate, preprocess, update_dimension
 # globals
 
 σ₀(x)  = x + (sqrt(x^2 +1)-1)/2
-gpu(x) = x
 
 # ------------------------------------------------------------------------
 # types
@@ -44,7 +43,7 @@ reverse(it::LayerIterator) = LayerIterator(
 function iterate(it::LayerIterator)
     w₁ = it.width[1]
     w₂ = it.width[2]
-    f  = Dense(w₁, w₂, it.σᵢ) |> gpu
+    f  = Dense(w₁, w₂, it.σᵢ)
 
     return f, (
         index     = 2,
@@ -55,13 +54,13 @@ end
 
 function iterate(it::LayerIterator, state)
     return if state.dropout
-               Dropout(0.5) |> gpu, (
+               Dropout(0.5), (
                    index     = state.index,
                    dropout   = false,
                    normalize = state.normalize,
                )
            elseif state.normalize
-               BatchNorm(it.width[state.index]) |> gpu, (
+               BatchNorm(it.width[state.index]), (
                    index     = state.index,
                    dropout   = false,
                    normalize = false,
@@ -71,7 +70,7 @@ function iterate(it::LayerIterator, state)
                 w₂ = it.width[state.index+1]
 
                 i  = state.index+1
-                f  = Dense(w₁, w₂, i == length(it.width) ? it.σₒ : it.σ) |> gpu
+                f  = Dense(w₁, w₂, i == length(it.width) ? it.σₒ : it.σ)
 
                 f, (
                      index     = i,
