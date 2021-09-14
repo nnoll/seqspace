@@ -98,7 +98,7 @@ end
 # XXX: can you refactor to be less repetitive ?
 function buildloss(model, D², param)
     if param.γᵤ == 0
-        (x, i, log) -> begin
+        (x, i, log) -> let
             z = model.pullback(x)
             x̂ = model.pushforward(z)
 
@@ -124,7 +124,7 @@ function buildloss(model, D², param)
             return ϵᵣ + param.γₓ*ϵₓ
         end
     else
-        (x, i, log) -> begin
+        (x, i, log) -> let
             z = model.pullback(x)
             x̂ = model.pushforward(z)
 
@@ -180,7 +180,7 @@ end
 function run(data, param; D²=nothing)
     D² = isnothing(D²) ? geodesics(data, param.k).^2 : D²
 
-    M = model(size(data, 1), param.dₒ;
+    M = model(size(data,1), param.dₒ;
           Ws         = param.Ws,
           normalizes = param.BN,
           dropouts   = param.DO
