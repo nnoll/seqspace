@@ -54,7 +54,7 @@ function cylinder²(x)
     return (c' .- c).^2 .+ (s' .- s).^2 .+ euclidean²(x[2:end,:])
 end
 
-HyperParams(; dₒ=3, Ws=Int[], BN=Int[], DO=Int[], N=200, δ=10, η=1e-3, B=64, V=81, k=12, γₓ=1, γᵤ=1e-1, γₗ=100, g=euclidean²) = HyperParams(dₒ, Ws, BN, DO, N, δ, η, B, V, k, γₓ, γᵤ, γₗ, g)
+HyperParams(; dₒ=2, Ws=Int[], BN=Int[], DO=Int[], N=200, δ=10, η=1e-3, B=64, V=81, k=12, γₓ=1, γᵤ=1e-1, γₗ=100, g=euclidean²) = HyperParams(dₒ, Ws, BN, DO, N, δ, η, B, V, k, γₓ, γᵤ, γₗ, g)
 
 struct Result
     param :: HyperParams
