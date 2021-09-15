@@ -3,7 +3,7 @@ module Voronoi
 using MiniQhull
 using LinearAlgebra
 
-import ChainRulesCore: rrule, NO_FIELDS
+import ChainRulesCore: rrule, NoTangent
 
 ∧(x,y) = x[1,:].*y[2,:] .- x[2,:].*y[1,:]
 
@@ -100,7 +100,7 @@ function rrule(::typeof(areas), x)
 
         end
 
-        (NO_FIELDS, 0.5*∂x)
+        (NoTangent(), 0.5*∂x)
     end
 
 end

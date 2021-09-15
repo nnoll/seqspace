@@ -7,7 +7,7 @@ import Base:
     eltype, length, minimum, take!
 
 import ChainRulesCore: 
-    rrule, NO_FIELDS
+    rrule, NoTangent
 
 include("queue.jl")
 using .PriorityQueue
@@ -43,7 +43,7 @@ function rrule(::typeof(upper_tri), m)
 			n += 1
 		end
 		
-        (NO_FIELDS, ∇m)
+        (NoTangent(), ∇m)
     end
 end
 

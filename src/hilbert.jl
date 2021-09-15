@@ -2,7 +2,7 @@ module Hilbert
 
 using HilbertSpaceFillingCurve
 
-import ChainRulesCore: rrule, NO_FIELDS
+import ChainRulesCore: rrule, NoTangent
 
 # assumes points between -1 and +1
 absrank(x::Array{T,2}) where T <: Real = [
@@ -25,7 +25,7 @@ end
 function rrule(::typeof(sort), x)
     r = absrank(x)
     ι = sortperm(r)
-    return x[:,ι], (∇) -> (NO_FIELDS, ∇[:,ι])
+    return x[:,ι], (∇) -> (NoTangent(), ∇[:,ι])
 end
 
 end

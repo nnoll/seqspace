@@ -1,6 +1,6 @@
 module SoftRank
 
-import ChainRulesCore: rrule, NO_FIELDS
+import ChainRulesCore: rrule, NoTangent
 
 export rank, softrank
 
@@ -117,7 +117,7 @@ function rrule(::typeof(softrank), x; ϵ=1e-2)
 	primal = s .- dual
 	
 	ι¯¹ = invperm(ι)	
-    return primal[ι¯¹], (∇) -> (NO_FIELDS, (∇ .- ∇isotonic(dual, ∇[ι])[ι¯¹]) ./ ϵ)
+    return primal[ι¯¹], (∇) -> (NoTangent(), (∇ .- ∇isotonic(dual, ∇[ι])[ι¯¹]) ./ ϵ)
 end
 
 # FIXME: topological flips are wrong!!
