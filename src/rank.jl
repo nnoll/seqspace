@@ -76,7 +76,7 @@ function isotonic(x)
 end
 
 function ∇isotonic(soln, x⃗)
-	y⃗ = zeros(size(x⃗))
+	y⃗ = zeros(Float32, size(x⃗))
 	
 	i₁ = 1
 	for δ in partition(soln)

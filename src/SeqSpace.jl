@@ -44,7 +44,7 @@ mutable struct HyperParams
 end
 
 const euclidean²(x) = sum( (x[d,:]' .- x[d,:]).^2 for d in 1:size(x,1) )
-function cylinder²(x) 
+function cylinder²(x)
     c = cos.(π.*(x[1,:]))
     s = sin.(π.*(x[1,:]))
 
@@ -152,19 +152,18 @@ function buildloss(model, D², param)
                 end for j ∈ 1:size(D̂²,2)
             )
 
-            # FIXME: allow for higher dimensionality than 2
             ϵᵤ = let
-                a = Voronoi.areas(z[1:2,:])
+                a = Voronoi.volumes(z)
                 std(a) / mean(a)
             end
 
-            ϵₗ = (size(z,1) ≤ 2) ? 0 : mean(sum(z[3:end,:].^2,dims=1))
+            # ϵₗ = (size(z,1) ≤ 2) ? 0 : mean(sum(z[3:end,:].^2,dims=1))
 
             if log
-                @show ϵᵣ, ϵₓ, ϵᵤ, ϵₗ
+                @show ϵᵣ, ϵₓ, ϵᵤ#, ϵₗ
             end
 
-            return ϵᵣ + param.γₓ*ϵₓ + param.γᵤ*ϵᵤ + param.γₗ*ϵₗ
+            return ϵᵣ + param.γₓ*ϵₓ + param.γᵤ*ϵᵤ #+ param.γₗ*ϵₗ
         end
     end
 end

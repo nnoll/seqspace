@@ -74,10 +74,10 @@ function rrule(::typeof(areas), x)
 
     a = 0.5*[ 
         let
-            q[1,t[1]]*(q[2,t[2]]-q[2,t[3]]) + 
-            q[1,t[2]]*(q[2,t[3]]-q[2,t[1]]) + 
+            q[1,t[1]]*(q[2,t[2]]-q[2,t[3]]) +
+            q[1,t[2]]*(q[2,t[3]]-q[2,t[1]]) +
             q[1,t[3]]*(q[2,t[1]]-q[2,t[2]])
-        end for t in eachcol(triangulation) 
+        end for t in eachcol(triangulation)
     ]
     s = sign.(a)
 
@@ -97,7 +97,6 @@ function rrule(::typeof(areas), x)
                 ∂x[1,t[3]-NB] += (q[2,t[1]]-q[2,t[2]])*∂a[i]*s[i]
                 ∂x[2,t[3]-NB] -= (q[1,t[1]]-q[1,t[2]])*∂a[i]*s[i]
             end
-
         end
 
         (NoTangent(), 0.5*∂x)
@@ -108,7 +107,8 @@ end
 # derivative of det given by adjugate (which is just rescaled inverse)
 # see https://en.wikipedia.org/wiki/Adjugate_matrix
 
-volume(simplex) = det(vcat(simplex, ones(1, size(simplex,2))))
+affine(simplex) = vcat(simplex, ones(1, size(simplex,2)))
+volume(simplex) = det(affine(simplex))
 
 function volumes(x)
     d = size(x,1)
@@ -117,7 +117,41 @@ function volumes(x)
     simplices = delaunay(q)
 
     Ω = [ volume(hcat((q[:,i] for i in simplex)...)) for simplex in eachcol(simplices) ]
-    return Ω ./ factorial(d)
+    s = sign.(Ω)
+
+    return s.*Ω
+end
+
+function rrule(::typeof(volumes), x)
+    d = size(x,1)
+    b = boundary(d)
+    q = hcat(b, x)
+
+    v₀ = size(b,2)
+    simplices = delaunay(q)
+
+    Ω = [ volume(hcat((q[:,i] for i in simplex)...)) for simplex in eachcol(simplices) ]
+    s = sign.(Ω)
+
+    Z = factorial(d)
+    return (s.*Ω) ./ Z, function(∂Ω)
+        ∂x = zeros(Float32,size(x))
+
+        for (n,simplex) in enumerate(eachcol(simplices))
+            ω = s[n]*Ω[n]*∂Ω[n]
+            Q = inv(affine(hcat((q[:,i] for i in simplex)...)))
+
+            for (i,v) in enumerate(simplex)
+                if v > v₀
+                    for j in 1:d
+                        ∂x[j,v-v₀] += ω*Q[i,j]
+                    end
+                end
+            end
+        end
+
+        return (NoTangent(), ∂x ./ Z)
+    end
 end
 
 end
