@@ -8,9 +8,9 @@ import ChainRulesCore: rrule, NoTangent
 ∧(x,y) = x[1,:].*y[2,:] .- x[2,:].*y[1,:]
 
 function boundary(d)
-    d == 2 && return [[-1;-1] [-1;+1] [+1;+1] [+1;-1]]
+    d == 2 && return Float32.([[-1;-1] [-1;+1] [+1;+1] [+1;-1]])
 
-    b = zeros(d, 2^d)
+    b = zeros(Float32, d, 2^d)
     for i in 0:(2^d-1)
         for n in 0:(d-1)
             b[n+1,i+1] = (((i >> n) & 1) == 1) ? +1 : -1
@@ -107,7 +107,7 @@ end
 # derivative of det given by adjugate (which is just rescaled inverse)
 # see https://en.wikipedia.org/wiki/Adjugate_matrix
 
-affine(simplex) = vcat(simplex, ones(1, size(simplex,2)))
+affine(simplex) = vcat(simplex, ones(Float32, 1, size(simplex,2)))
 volume(simplex) = det(affine(simplex))
 
 function volumes(x)

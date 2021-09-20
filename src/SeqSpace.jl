@@ -3,7 +3,7 @@ module SeqSpace
 using GZip
 using BSON: @save
 using LinearAlgebra: norm, svd, Diagonal
-using Statistics: quantile, mean, std, cor, cov, var
+using Statistics: quantile, std
 using Flux, Zygote
 
 import BSON
@@ -104,10 +104,24 @@ function load(io)
     result, input = database[:result], database[:in]
 end
 
+mean(x) = length(x) > 0 ? sum(x) / length(x) : 0
+function cor(x, y)
+    μ = (
+        x=mean(x),
+        y=mean(y)
+    )
+    var = (
+       x=mean(x.^2) .- μ.x^2,
+       y=mean(y.^2) .- μ.y^2
+    )
+
+    return (mean(x.*y) .- μ.x.*μ.y) / sqrt(var.x*var.y)
+end
+
 # XXX: can you refactor to be less repetitive ?
 function buildloss(model, D², param)
     if param.γᵤ == 0
-        function(x, i, log)
+        function(x, i::T, log) where T <: AbstractArray{Int,1}
             z = model.pullback(x)
             x̂ = model.pushforward(z)
 
@@ -115,15 +129,15 @@ function buildloss(model, D², param)
             ϵᵣ = sum(sum((x.-x̂).^2, dims=2)) / sum(sum(x.^2, dims=2))
 
             # distance softranks
-            D̂² = param.g(z)
-            D̄² = D²[i,i]
+            Dx² = D²[i,i]
+            Dz² = param.g(z)
 
             ϵₓ = mean(
                 let
-                    d, d̂ = D̄²[:,j], D̂²[:,j]
-                    r, r̂ = softrank(d ./ mean(d)), softrank(d̂ ./ mean(d̂))
-                    1 - cov(r, r̂)/sqrt(var(r)*var(r̂))
-                end for j ∈ 1:size(D̂²,2)
+                    dx, dz = Dx²[:,j], Dz²[:,j]
+                    rx, rz = softrank(dx ./ mean(dx)), softrank(dz ./ mean(dz))
+                    1 - cor(rx,rz)
+                end for j ∈ 1:size(Dx²,2)
             )
 
             if log
@@ -133,23 +147,23 @@ function buildloss(model, D², param)
             return ϵᵣ + param.γₓ*ϵₓ
         end
     else
-        function(x, i, log)
+        function(x, i::T, log) where T <: AbstractArray{Int,1}
             z = model.pullback(x)
-            x̂ = model.pushforward(z)
+            y = model.pushforward(z)
 
             # reconstruction loss
-            ϵᵣ = sum(sum((x.-x̂).^2, dims=2)) / sum(sum(x.^2,dims=2))
+            ϵᵣ = sum(sum((x.-y).^2, dims=2)) / sum(sum(x.^2,dims=2))
 
             # distance softranks
-            D̂² = param.g(z)
-            D̄² = D²[i,i]
+            Dz² = param.g(z)
+            Dx² = D²[i,i]
 
             ϵₓ = mean(
                 let
-                    d, d̂ = D̄²[:,j], D̂²[:,j]
-                    r, r̂ = softrank(d ./ mean(d)), softrank(d̂ ./ mean(d̂))
-                    1 - cov(r, r̂)/sqrt(var(r)*var(r̂))
-                end for j ∈ 1:size(D̂²,2)
+                    dx, dz = Dx²[:,j], Dz²[:,j]
+                    rx, rz = softrank(dx ./ mean(dx)), softrank(dz ./ mean(dz))
+                    1 - cor(rx, rz)
+                end for j ∈ 1:size(Dx²,2)
             )
 
             ϵᵤ = let
@@ -176,10 +190,10 @@ function linearprojection(x, d; Δ=1, Λ=nothing)
 
     ι = (1:d) .+ Δ
     ψ = Diagonal(Λ.S[ι])*Λ.Vt[ι,:]
-	μ = mean(ψ, dims=2)
+    μ = mean(ψ, dims=2)
 
     x₀ = (Δ > 0) ? Λ.U[:,1:Δ]*Diagonal(Λ.S[1:Δ])*Λ.Vt[1:Δ,:] : 0
-	return (
+    return (
         projection = (ψ .- μ),
         embed = (x) -> (x₀ .+ (Λ.U[:,ι]*(x.+μ)))
     )

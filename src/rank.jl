@@ -23,10 +23,10 @@ end
 function isotonic(x)
 	n = length(x)
 	τ = collect(vec(1:n))
-	c = ones(n)
+	c = ones(Float32,n)
 	Σ = copy(x)
 	y = copy(x)
-	
+
 	i = 1
 	while i <= n
 		k = τ[i] + 1
@@ -90,7 +90,7 @@ end
 
 function projection(x)
 	n = length(x)
-    w = reverse(range(1/n, 1; length=n)) #vec(collect(n:-1:1))
+    w = Float32.(reverse(range(1/n, 1; length=n))) #vec(collect(n:-1:1))
 	ι = reverse(sortperm(x))
 	s = x[ι]
 
@@ -101,22 +101,22 @@ function projection(x)
 end
 
 rank(x)             = invperm(sortperm(x))
-softrank(x; ϵ=1e-2) = projection(x ./ ϵ)
+softrank(x; ϵ=Float32(1e-2)) = projection(x ./ ϵ)
 	
-function rrule(::typeof(softrank), x; ϵ=1e-2)
-	# scale input
-	x = x ./ ϵ
-	
-	# compute value
-	n = length(x)
-	w = reverse(range(1/n, 1; length=n))
-	ι = reverse(sortperm(x))
-	s = x[ι]
+function rrule(::typeof(softrank), x; ϵ=Float32(1e-2))
+    # scale input
+    x = x ./ ϵ
 
-	dual   = isotonic(s.-w)
-	primal = s .- dual
-	
-	ι¯¹ = invperm(ι)	
+    # compute value
+    n = length(x)
+    w = Float32.(reverse(range(1/n, 1; length=n)))
+    ι = reverse(sortperm(x))
+    s = x[ι]
+
+    dual   = isotonic(s.-w)
+    primal = s .- dual
+
+    ι¯¹ = invperm(ι)
     return primal[ι¯¹], (∇) -> (NoTangent(), (∇ .- ∇isotonic(dual, ∇[ι])[ι¯¹]) ./ ϵ)
 end
 

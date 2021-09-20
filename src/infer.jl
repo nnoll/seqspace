@@ -48,7 +48,7 @@ function cohortdatabase(stage::Int)
     )
 end
 
-function virtualembryo(;directory="/home/nolln/code/bio/seqspace/data/embryo")
+function virtualembryo(;directory="/home/nolln/root/data/seqspace/drosophila/dvex")
     expression, _, genes = GZip.open("$directory/bdtnp.txt.gz") do io
         read_matrix(io; named_cols=true)
     end
