@@ -21,8 +21,8 @@ FITMODEL  = @echo ">generating $(@:$(DATA)/%=%)";\
 define RULE
 $(DATA)/$(DIR)/model/norms.jld2: param/$(DIR)/normalize.jl $(shell find $(DATA)/$(DIR)/raw -type f)
 	$$(NORMALIZE) -o $$@ -p $$< $(DATA)/$(DIR)/raw
-$(DATA)/$(DIR)/model/model.bson: $(DATA)/$(DIR)/model/norms.jld2
-	$$(FITMODEL)
+$(DATA)/$(DIR)/model/model.jld2: param/$(DIR)/model.jl $(DATA)/$(DIR)/model/norms.jld2
+	$$(FITMODEL) -o $$@ -p $$^
 
 MODELS+=$(DATA)/$(DIR)/model/model.bson
 NORMED+=$(DATA)/$(DIR)/model/norms.jld2

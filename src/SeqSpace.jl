@@ -18,7 +18,7 @@ include("pointcloud.jl")
 using .PointCloud, .DataIO, .SoftRank, .ML
 
 export Result, HyperParams
-export run
+export linearprojection, fitmodel, extendfit
 
 # ------------------------------------------------------------------------
 # globals
@@ -201,7 +201,7 @@ function linearprojection(x, d; Δ=1, Λ=nothing)
     )
 end
 
-function run(data, param; D²=nothing)
+function fitmodel(data, param; D²=nothing)
     D² = isnothing(D²) ? geodesics(data, param.k).^2 : D²
 
     M = model(size(data,1), param.dₒ;
@@ -230,35 +230,25 @@ function run(data, param; D²=nothing)
     end
 
     train!(M, batch.train, index.train, loss; 
-        η   = param.η, 
-        B   = param.B, 
-        N   = param.N, 
+        η   = param.η,
+        B   = param.B,
+        N   = param.N,
         log = log
     )
 
     return Result(param, E, M), (batch=batch, index=index, D²=D², log=log)
 end
 
-function extendrun(result::Result, input, epochs)
+function extendfit(result::Result, input, epochs)
     loss = buildloss(result.model, input.D², result.param)
     train!(result.model, input.y.train, input.index.train, loss; 
-        η   = result.param.η, 
-        B   = result.param.B, 
+        η   = result.param.η,
+        B   = result.param.B,
         N   = epochs,
         log = input.log
     )
 
     return result, input
-end
-
-function main(input, niter, output)
-    params = Result[]
-    open(input, "r") do io 
-        params = eval(Meta.parse(read(io, String)))
-    end
-
-    result, data = run(params, niter)
-    @save "$root/result/$output.bson" result data
 end
 
 end

@@ -13,6 +13,9 @@ include("../src/pointcloud.jl")
 include("utils.jl")
 using .CommandUtility
 
+# ------------------------------------------------------------------------
+# variable inputs
+
 mutable struct Parameters
     threshold :: NamedTuple{(:gene,:cell), Tuple{Float64,Float64}}
     subdir    :: Union{Nothing, AbstractString}
@@ -226,13 +229,6 @@ end
 # ------------------------------------------------------------------------
 # main point of entry
 
-function loadparams(path)
-    code = read(path, String)
-    ast  = Meta.parse(code)
-    result = eval(ast)
-    return result !== nothing ? result : default
-end
-
 if abspath(PROGRAM_FILE) == @__FILE__
     params = (
         p = Arg("inpath", loadparams, default),
@@ -250,8 +246,8 @@ if abspath(PROGRAM_FILE) == @__FILE__
     outdir = dirname(params.o.value)
     !isdir(outdir) && mkdir(outdir)
 
-    figdir = "$(outdir)/figs"
-    !isdir(figdir) && mkdir(figdir)
+    figdir = "$(outdir)/figs/norm"
+    !isdir(figdir) && mkpath(figdir)
 
     result = normalize(input, params.p.value, figdir)
     # TODO: output file to correct path
