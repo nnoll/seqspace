@@ -139,13 +139,22 @@ function rrule(::typeof(volumes), x)
 
         for (n,simplex) in enumerate(eachcol(simplices))
             ω = s[n]*Ω[n]*∂Ω[n]
-            Q = inv(affine(hcat((q[:,i] for i in simplex)...)))
+            try
+                Q = inv(affine(hcat((q[:,i] for i in simplex)...)))
 
-            for (i,v) in enumerate(simplex)
-                if v > v₀
-                    for j in 1:d
-                        ∂x[j,v-v₀] += ω*Q[i,j]
+                for (i,v) in enumerate(simplex)
+                    if v > v₀
+                        for j in 1:d
+                            ∂x[j,v-v₀] += ω*Q[i,j]
+                        end
                     end
+                end
+            catch error
+                # XXX: do we need to do something more intelligent here?
+                if isa(error, LinearAlgebra.SingularException)
+                    continue
+                else
+                    throw(error)
                 end
             end
         end

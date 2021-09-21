@@ -1,4 +1,5 @@
 bin
 figs
 static
+nb
 *.jld2

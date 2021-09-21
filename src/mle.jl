@@ -267,7 +267,7 @@ function fit_glm(model::Symbol, data; Γ=(β̄=1,δβ¯²=10,Γᵧ=nothing), run
     end
 
     fits     = Array{FitType,1}(undef,j-1)
-    progress = Progress(sum(ι .!= 0); desc="--> fitting:")
+    progress = Progress(sum(ι .!= 0); desc="--> fitting:", output=stderr)
     for (i, row) ∈ enumerate(eachrow(data))
         ι[i] == 0 && continue
 
@@ -275,21 +275,20 @@ function fit_glm(model::Symbol, data; Γ=(β̄=1,δβ¯²=10,Γᵧ=nothing), run
         next!(progress)
     end
 
-    return vcat((fit.residuals' for fit ∈ fits)...),
-        (
-            likelihood  = map((f)->f.likelihood,  fits),
+    return (
+        likelihood  = map((f)->f.likelihood,  fits),
 
-            # XXX: assumes particular form for parameters
-            α  = map((f)->f.parameters[1],  fits),
-            β  = map((f)->f.parameters[2],  fits),
-            γ  = map((f)->f.parameters[3],  fits),
+        # XXX: assumes particular form for parameters
+        α  = map((f)->f.parameters[1],  fits),
+        β  = map((f)->f.parameters[2],  fits),
+        γ  = map((f)->f.parameters[3],  fits),
 
-            δα = map((f)->f.uncertainty[1], fits),
-            δβ = map((f)->f.uncertainty[2], fits),
-            δγ = map((f)->f.uncertainty[3], fits),
+        δα = map((f)->f.uncertainty[1], fits),
+        δβ = map((f)->f.uncertainty[2], fits),
+        δγ = map((f)->f.uncertainty[3], fits),
 
-            cdf = map((f)->f.cumulative, fits),
-        )
+        cdf = map((f)->f.cumulative, fits),
+    )
 
 end
 

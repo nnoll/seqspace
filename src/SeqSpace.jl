@@ -37,9 +37,9 @@ mutable struct HyperParams
     B  :: Int          # batch size
     V  :: Int          # number of points to partition for validation
     k  :: Int          # number of neighbors to use to estimate geodesics
-    γₓ :: Float64      # prefactor of distance soft rank loss
-    γᵤ :: Float64      # prefactor of uniform density loss
-    γₗ :: Float64      # prefactor of latent space extra dimensions
+    γₓ :: Float32      # prefactor of distance soft rank loss
+    γᵤ :: Float32      # prefactor of uniform density loss
+    γₗ :: Float32      # prefactor of latent space extra dimensions
     g  :: Function     # metric given to latent space
 end
 
@@ -105,6 +105,8 @@ function load(io)
 end
 
 mean(x) = length(x) > 0 ? sum(x) / length(x) : 0
+mean(x::Matrix;dims=1) = sum(x;dims=dims) / size(x,dims)
+
 function cor(x, y)
     μ = (
         x=mean(x),
@@ -167,11 +169,11 @@ function buildloss(model, D², param)
             )
 
             ϵᵤ = let
-                a = Voronoi.volumes(z)
+                a = Voronoi.volumes(z[1:2,:])
                 std(a) / mean(a)
             end
 
-            # ϵₗ = (size(z,1) ≤ 2) ? 0 : mean(sum(z[3:end,:].^2,dims=1))
+            #ϵₗ = (size(z,1) ≤ 2) ? 0 : mean(sum(z[3:end,:].^2,dims=1))
 
             if log
                 @show ϵᵣ, ϵₓ, ϵᵤ#, ϵₗ
