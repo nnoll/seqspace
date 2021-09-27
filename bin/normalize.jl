@@ -122,12 +122,21 @@ function mpmaxeigval(λ, x₀, rank)
     p
 end
 
+function ipr(ψ)
+    IPR = vec(sum(ψ.^2,dims=2).^2 ./ sum(ψ.^4,dims=2))
+    p = plot(1:length(IPR), IPR, 
+             xscale=:log10
+             xlabel="principal component",
+             ylabel="participation ratio",
+             yscale=:log10
+    )
+    return p
+end
+
 end
 
 # ------------------------------------------------------------------------
 # the bulk of the code
-
-alert(msg) = println(stderr, msg)
 
 function data(dir::AbstractString, subdir, filter::Function)
     N = if subdir === nothing
@@ -195,9 +204,13 @@ function normalize(dir::AbstractString, param::Parameters, figs::AbstractString)
         (Diagonal(.√u²) * counts * Diagonal(.√v²)), (Diagonal(u²) * σ² * Diagonal(v²)), u², v²
     end
 
-    λ = svdvals(N)
+    Λ = svd(N)
+    λ = Λ.S
     R = sum(λ .> (sqrt(size(N,1))+sqrt(size(N,2)))) + param.δ
-    param.plot && savefig(Plot.mpmaxeigval(λ, √(size(N,1)) + √(size(N,2)), R), "$figs/rank_estimation.png")
+    param.plot && let
+        savefig(Plot.mpmaxeigval(λ, √(size(N,1)) + √(size(N,2)), R), "$figs/rank_estimation.png")
+        savefig(Plot.ipr(Λ.Vt), "$figs/participation_ratio.png")
+    end
 
     # reduce rank to signal directions
     N, c = let
@@ -236,9 +249,7 @@ if abspath(PROGRAM_FILE) == @__FILE__
     )
 
     args = argparse(ARGS,params)
-    if length(args) > 1
-        error("too many input paths")
-    end
+    length(args) > 1 && error("too many input paths")
 
     input = args[1]
     !isdir(input) && error("directory $input not found")

@@ -19,6 +19,7 @@ using .PointCloud, .DataIO, .SoftRank, .ML
 
 export Result, HyperParams
 export linearprojection, fitmodel, extendfit
+export marshal, unmarshal
 
 # ------------------------------------------------------------------------
 # globals
@@ -48,9 +49,6 @@ function cylinder²(x)
     c = cos.(π.*(x[1,:]))
     s = sin.(π.*(x[1,:]))
 
-    # Δ = .√((c' .- c).^2 .+ (s' .- s).^2) 
-
-    # return 4*asin.(Δ./2).^2 .+ euclidean²(x[2:end,:])
     return (c' .- c).^2 .+ (s' .- s).^2 .+ euclidean²(x[2:end,:])
 end
 
@@ -60,6 +58,17 @@ struct Result
     param :: HyperParams
     loss  :: NamedTuple{(:train, :valid), Tuple{Array{Float64,1},Array{Float64,1}} }
     model
+end
+
+function marshal(r::Result)
+    io = IOBuffer()
+    BSON.bson(io, r.model)
+    return Result(r.param,r.loss,take!(io))
+end
+
+function unmarshal(r::Result)
+    io = IOBuffer(r.model)
+    return Result(r.param,r.loss,BSON.load(io))
 end
 
 # ------------------------------------------------------------------------
@@ -96,10 +105,8 @@ end
 # ------------------------------------------------------------------------
 # i/o
 
-# TODO: add a save function
-
 # assumes a BSON i/o
-function load(io)
+function load(io::IO)
     database = BSON.parse(io)
     result, input = database[:result], database[:in]
 end
