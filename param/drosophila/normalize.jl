@@ -19,10 +19,8 @@ let
         return counts
     end
 
-    Parameters(
-        threshold=default.threshold,
+    Parameters("basic";
         subdir="rep",
         filter=basicfilter,
-        plots=true
     )
 end

@@ -1,4 +1,4 @@
-module Normalize
+module Command
 
 using JLD2, FileIO
 using LinearAlgebra, SpecialFunctions, NMF
@@ -10,32 +10,39 @@ include("../src/mle.jl")
 include("../src/util.jl")
 include("../src/pointcloud.jl")
 
-include("utils.jl")
-using .CommandUtility
+using .scRNA
 
 # ------------------------------------------------------------------------
 # variable inputs
 
 mutable struct Parameters
+    name      :: String
     threshold :: NamedTuple{(:gene,:cell), Tuple{Float64,Float64}}
     subdir    :: Union{Nothing, AbstractString}
     filter    :: Function
-    plots     :: Bool
+    plot      :: Bool
+    δ         :: Int
 end
 
 const default = Parameters(
+    "",
     (gene = 5e-3, cell = 2e-1),
     nothing,
     (X) -> X,
-    true
+    true,
+    0
 )
 
-Parameters(;
+Parameters(name;
     threshold=default.threshold,
     subdir=default.subdir,
     filter=default.filter,
-    plots=default.plots
-) = Parameters(threshold, subdir, filter, plots)
+    plot=default.plot,
+    δ=default.δ
+) = Parameters(name, threshold, subdir, filter, plot, δ)
+
+include("utils.jl")
+using .CommandUtility
 
 # ------------------------------------------------------------------------
 # plotting code
@@ -51,19 +58,19 @@ cdf(x;  kwargs...) = plot(sort(x),  range(0,1,length=length(x)); kwargs...)
 cdf!(x; kwargs...) = plot!(sort(x), range(0,1,length=length(x)); kwargs...)
 
 function marginals(matrix; ϵ=1e-6)
-    p₁ = cdf(vec(mean(data,dims=1)).+ϵ, xscale=:log10, label="", linewidth=2)
+    p₁ = cdf(vec(mean(matrix,dims=1)).+ϵ, xscale=:log10, label="", linewidth=2)
     xaxis!("mean count/cell")
     yaxis!("CDF")
 
-    p₂ = cdf(vec(mean(data,dims=2)).+ϵ, xscale=:log10, label="", linewidth=2)
+    p₂ = cdf(vec(mean(matrix,dims=2)).+ϵ, xscale=:log10, label="", linewidth=2)
     xaxis!("mean count/gene")
     yaxis!("CDF")
 
     return plot(p₁, p₂)
 end
 
-function qq(x, model)
-    p = scatter(rank(x), model.cumulative(param), linewidth=2, label="")
+function qq(x, model, param)
+    p = scatter(rank(x)./length(x), model.cumulative(param), linewidth=2, label="")
     plot!(0:1, 0:1, color=:red, linewidth=2, linestyle=:dashdot, label="ideal")
     xaxis!("empirical quantile")
     yaxis!("model quantile")
@@ -125,10 +132,11 @@ end
 function ipr(ψ)
     IPR = vec(sum(ψ.^2,dims=2).^2 ./ sum(ψ.^4,dims=2))
     p = plot(1:length(IPR), IPR, 
-             xscale=:log10
+             xscale=:log10,
              xlabel="principal component",
              ylabel="participation ratio",
-             yscale=:log10
+             yscale=:log10,
+             label="",
     )
     return p
 end
@@ -149,29 +157,31 @@ function data(dir::AbstractString, subdir, filter::Function)
 end
 
 function cutoff(counts, threshold)
-    x = scRNA.filtergene(x) do gene, _
+    counts = scRNA.filtergene(counts) do gene, _
         mean(gene) >= threshold.gene && length(unique(gene)) > 3
     end
 
-    x = scRNA.filtercell(x) do cell, _
+    counts = scRNA.filtercell(counts) do cell, _
         mean(cell) >= threshold.cell
     end
+
+    return counts
 end
 
 function normalize(dir::AbstractString, param::Parameters, figs::AbstractString)
     # load in raw data. impose data specific filter
-    alert("--> loading raw data")
+    alert("-->loading raw data")
     counts = data(dir, param.subdir, param.filter)
     param.plot && savefig(Plot.marginals(counts), "$figs/raw_count_marginals.png")
 
     # impose (conservative) count-based cutoffs
-    alert("--> threshold raw data")
+    alert("-->threshold raw data")
     counts = cutoff(counts, param.threshold)
     param.plot && savefig(Plot.marginals(counts), "$figs/threshold_count_marginals.png")
 
     # estimate marginalized overdispersion distribution from highly expressed genes
-    alert("--> estimating overdispersion prior")
-    p₀ = MLE.fit_glm(:negative_binomial, X;
+    alert("-->estimating overdispersion prior")
+    p₀ = MLE.fit_glm(:negative_binomial, counts;
         Γ=(β̄=1, δβ¯²=10, Γᵧ=nothing),
         run=(x) -> mean(x) > 1
     )
@@ -182,12 +192,12 @@ function normalize(dir::AbstractString, param::Parameters, figs::AbstractString)
 
     logγ  = log.(p₀.γ)
     model = MLE.generalized_normal(logγ)
-    param = MLE.fit(model)
-    param.plot && savefig(Plot.qq(logγ, model, param), "$figs/overdispersion_distribution_fig.png")
+    prior = MLE.fit(model)
+    param.plot && savefig(Plot.qq(logγ, model, prior), "$figs/overdispersion_distribution_fit.png")
 
     # use overdispersion distribution as prior into the full fit
-    alert("--> fitting overdispersion per gene")
-    p₀ = MLE.fit_glm(:negative_binomial, X; Γ=(β̄=1, δβ¯²=10, Γᵧ=param))
+    alert("-->fitting overdispersion per gene")
+    p₀ = MLE.fit_glm(:negative_binomial, counts; Γ=(β̄=1, δβ¯²=10, Γᵧ=prior))
     param.plot && let
         p = Plot.mlefits(counts, p₀)
         savefig(p[1], "$figs/nb_α_fit.png")
@@ -196,7 +206,7 @@ function normalize(dir::AbstractString, param::Parameters, figs::AbstractString)
     end
 
     # normalize variance of count matrix. estimate rank
-    alert("--> normalizing count variance & estimating rank")
+    alert("-->normalizing count variance & estimating rank")
     N, σ², u², v² = let
         σ² = counts.*(counts.+p₀.γ) ./ (1 .+ p₀.γ)
         u², v², _ = Utility.sinkhorn(σ²)
@@ -220,9 +230,9 @@ function normalize(dir::AbstractString, param::Parameters, figs::AbstractString)
     end
 
     # renormalize
-    alert("--> normalizing reduced rank matrix")
+    alert("-->normalizing reduced rank matrix")
     N, u, v = let
-        u, v, _ = Utility.sinkhorn(Y)
+        u, v, _ = Utility.sinkhorn(N)
         (Diagonal(u) * N * Diagonal(v)), u, v
     end
 
@@ -248,7 +258,7 @@ if abspath(PROGRAM_FILE) == @__FILE__
         o = Arg("outpath", (path)->path, nothing)
     )
 
-    args = argparse(ARGS,params)
+    args = argparse(ARGS, params)
     length(args) > 1 && error("too many input paths")
 
     input = args[1]
@@ -260,8 +270,23 @@ if abspath(PROGRAM_FILE) == @__FILE__
     figdir = "$(outdir)/figs/norm"
     !isdir(figdir) && mkpath(figdir)
 
-    result = normalize(input, params.p.value, figdir)
-    # TODO: output file to correct path
+    ENV["GKSwstype"] = "nul"
+    allparams = isa(params.p.value, AbstractArray) ? params.p.value : [ params.p.value ]
+
+    jldopen("$outdir/norms.jld2", "w") do data
+        for (i,param) in enumerate(allparams)
+            name = length(param.name) > 0 ? param.name : "set$i"
+
+            figsubdir = "$figdir/$(name)"
+            !isdir(figsubdir) && mkpath(figsubdir)
+            result = normalize(input, param, figsubdir)
+
+            data["$name/normparam"] = param
+            for (key,val) in pairs(result)
+                data["$name/$key"] = val
+            end
+        end
+    end
 end
 
 end
