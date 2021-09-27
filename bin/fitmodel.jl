@@ -152,7 +152,7 @@ function autoencode(data, param::Parameters, figs::AbstractString)
         distance = D,
         isomap   = ξ,
         fit      = marshal(result),
-        latent   = result.pullback(input.projection),
+        latent   = result.model.pullback(input.projection),
     )
 end
 
@@ -183,9 +183,9 @@ if abspath(PROGRAM_FILE) == @__FILE__
             alert("-->processing group $(name)")
             result = autoencode(norm[name]["data"], params.p.value, figdir)
 
-            model[name]["fitparams"] = params.p.value
+            model["$name/fitparams"] = params.p.value
             for (key,val) in pairs(result)
-                data["$name/$key"] = val
+                model["$name/$key"] = val
             end
         end
     end; end
