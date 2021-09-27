@@ -9,8 +9,9 @@ include("../src/scrna.jl")
 include("../src/mle.jl")
 include("../src/util.jl")
 include("../src/pointcloud.jl")
+include("../src/SeqSpace.jl")
 
-using .scRNA
+using .scRNA, .SeqSpace
 
 # ------------------------------------------------------------------------
 # variable inputs
@@ -276,6 +277,7 @@ if abspath(PROGRAM_FILE) == @__FILE__
     jldopen("$outdir/norms.jld2", "w") do data
         for (i,param) in enumerate(allparams)
             name = length(param.name) > 0 ? param.name : "set$i"
+            alert("-->processing group $(name)")
 
             figsubdir = "$figdir/$(name)"
             !isdir(figsubdir) && mkpath(figsubdir)

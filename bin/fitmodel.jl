@@ -1,4 +1,4 @@
-module FitModel
+module Command
 
 using JLD2, FileIO
 using LinearAlgebra
@@ -12,8 +12,7 @@ include("../src/pointcloud.jl")
 include("../src/distance.jl")
 include("../src/SeqSpace.jl")
 
-include("utils.jl")
-using .CommandUtility, .SeqSpace
+using .SeqSpace, .PointCloud
 
 # ------------------------------------------------------------------------
 # variable inputs
@@ -37,7 +36,10 @@ Parameters(;
     dim=default.dim,
     plot=default.plot,
     metric=default.metric,
-) = Parameters(hyper,dim,plot,metric,niter)
+) = Parameters(hyper,dim,plot,metric)
+
+include("utils.jl")
+using .CommandUtility
 
 # ------------------------------------------------------------------------
 # plotting code
@@ -46,7 +48,8 @@ module Plot
 
 using Plots
 
-import ..PointCloud
+import ..PointCloud, ..Distances
+using Statistics, StatsBase
 
 function scaling(D, N; δ=2)
     ϕ, Rs = PointCloud.scaling(D, N)
@@ -57,11 +60,13 @@ function scaling(D, N; δ=2)
            yscale=:log10,
            label="",
     )
-    plot!(Rs, 1e-4*Rs.^3,
+
+
+    plot!(Rs, size(ϕ,1)*(Rs ./ maximum(Rs)).^3,
            color=:black,
            linestyle=:dashdot,
            linewidth=2,
-           label="",
+           label="3d scaling",
     )
     xaxis!("ball size")
     yaxis!("number of points enclosed", (20,size(D,1)))
@@ -70,7 +75,7 @@ function scaling(D, N; δ=2)
 end
 
 function isomapfit(ξ,D)
-    c = [ cor(PointCloud.upper_tri(Distance.euclidean(ξ[:,1:i]')),
+    c = [ cor(PointCloud.upper_tri(Distances.euclidean(ξ[:,1:i]')),
               PointCloud.upper_tri(D)) for i ∈ 1:10 ]
     p = plot(c, label="", linewidth=2, addmarker=true)
 
@@ -103,27 +108,40 @@ end
 # ------------------------------------------------------------------------
 # bulk functionality
 
-function autoencode(input::AbstractString, param::Parameters, figs::AbstractString)
-    alert("--> projecting data to linear subspace")
-    data  = load(input, "data")
+function mainconncomp(distances)
+    adj = distances .!= Inf
+    ncs = sum(adj,dims=1)
+    ccs = Set(ncs)
+
+    return vec(ncs .== maximum(ccs))
+end
+
+function autoencode(data, param::Parameters, figs::AbstractString)
+    alert("---->projecting data sized $(size(data)) to $(param.dim) dimensional linear subspace")
     input = linearprojection(data, param.dim)
 
-    alert("--> computing geodesics")
+    alert("---->computing geodesics")
     D₀ = param.metric(input.projection)
     χ  = percentile(upper_tri(D₀), 5)
-    D  = geodesics(input.projection, param.k; D=D₀, accept=(d)->d≤χ)
+    D  = geodesics(input.projection, param.hyper.k; D=D₀, accept=(d)->d≤χ)
+
+    ι = mainconncomp(D)
+    D = D[ι,ι]
+    input = (projection=input.projection[:,ι], embed=input.embed)
+    alert("---->main connected component sized $(sum(ι))")
+
     param.plot && let
         savefig(Plot.scaling(D₀, 100), "$figs/pointcloud_scaling_base.png")
         savefig(Plot.scaling(D,  100), "$figs/pointcloud_scaling_geodesic.png")
     end
 
-    alert("--> computing isomap coordinates")
-    ξ = real.(mds(D², 10))
+    alert("---->computing isomap coordinates")
+    ξ = real.(mds(D.^2, 10))
     param.plot && savefig(Plot.isomapfit(ξ,D), "$figs/isomap_corr.png")
 
-    alert("--> fitting autoencoder replicates")
+    alert("---->fitting autoencoder replicates")
     # TODO: add niter parameter
-    result, metadata = fitmodel(input.projection, param.hyper; D²=D.^2)
+    result, metadata = fitmodel(input.projection, param.hyper; D²=D.^2, chatty=false)
     param.plot && let
         savefig(Plot.fitequilibrate(result.loss), "$figs/loss_dynamics.png")
         savefig(Plot.fitgoodness(input.projection, result.model.identity(input.projection)), "$figs/fit_residual.png")
@@ -133,7 +151,8 @@ function autoencode(input::AbstractString, param::Parameters, figs::AbstractStri
         input    = input,
         distance = D,
         isomap   = ξ,
-        result   = marshal(result),
+        fit      = marshal(result),
+        latent   = result.pullback(input.projection),
     )
 end
 
@@ -149,8 +168,7 @@ if abspath(PROGRAM_FILE) == @__FILE__
     args = argparse(ARGS,params)
     length(args) > 1 && error("too many input paths")
 
-    input = args[1]
-    !isdir(input) && error("directory $input not found")
+    input  = args[1]
 
     outdir = dirname(params.o.value)
     !isdir(outdir) && mkdir(outdir)
@@ -158,8 +176,19 @@ if abspath(PROGRAM_FILE) == @__FILE__
     figdir = "$(outdir)/figs/model"
     !isdir(figdir) && mkpath(figdir)
 
-    result = autoencode(input, params.p.value, figdir)
-    # TODO: output file to correct path
+    ENV["GKSwstype"] = "nul"
+    output = params.o.value
+    jldopen(output, "w") do model; jldopen(input, "r") do norm
+        for name in keys(norm)
+            alert("-->processing group $(name)")
+            result = autoencode(norm[name]["data"], params.p.value, figdir)
+
+            model[name]["fitparams"] = params.p.value
+            for (key,val) in pairs(result)
+                data["$name/$key"] = val
+            end
+        end
+    end; end
 end
 
 end

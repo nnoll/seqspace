@@ -5,6 +5,7 @@ using BSON: @save
 using LinearAlgebra: norm, svd, Diagonal
 using Statistics: quantile, std
 using Flux, Zygote
+using ProgressMeter
 
 import BSON
 
@@ -62,13 +63,13 @@ end
 
 function marshal(r::Result)
     io = IOBuffer()
-    BSON.bson(io, r.model)
+    BSON.bson(io, Dict(k=>v for (k,v) in pairs(r.model)))
     return Result(r.param,r.loss,take!(io))
 end
 
 function unmarshal(r::Result)
     io = IOBuffer(r.model)
-    return Result(r.param,r.loss,BSON.load(io))
+    return Result(r.param,r.loss,(k=v for (k,v) in BSON.load(io)))
 end
 
 # ------------------------------------------------------------------------
@@ -128,7 +129,7 @@ function cor(x, y)
 end
 
 function buildloss(model, D², param)
-    return function(x, i::T, log) where T <: AbstractArray{Int,1}
+    return function(x, i::T, output::Bool) where T <: AbstractArray{Int,1}
         z = model.pullback(x)
         y = model.pushforward(z)
 
@@ -148,11 +149,13 @@ function buildloss(model, D², param)
         )
 
         ϵᵤ = let
-            a = Voronoi.volumes(z[1:2,:])
+            a = Voronoi.volumes(z)
             std(a) / mean(a)
         end
 
-        log && println(stderr, "ϵᵣ=$(ϵᵣ), ϵₓ=$(ϵₓ), ϵᵤ=$(ϵᵤ)")
+        if output
+            println(stderr, "ϵᵣ=$(ϵᵣ), ϵₓ=$(ϵₓ), ϵᵤ=$(ϵᵤ)")
+        end
 
         return ϵᵣ + param.γₓ*ϵₓ + param.γᵤ*ϵᵤ
     end
@@ -169,13 +172,17 @@ function linearprojection(x, d; Δ=1, Λ=nothing)
     μ = mean(ψ, dims=2)
 
     x₀ = (Δ > 0) ? Λ.U[:,1:Δ]*Diagonal(Λ.S[1:Δ])*Λ.Vt[1:Δ,:] : 0
+
+    embed(x)   = (x₀ .+ (Λ.U[:,ι]*(x.+μ)))
+    embed(x,i) = (x₀ .+ (Λ.U[:,ι]*(x.+μ[i])))
+
     return (
+        embed      = embed,
         projection = (ψ .- μ),
-        embed = (x) -> (x₀ .+ (Λ.U[:,ι]*(x.+μ)))
     )
 end
 
-function fitmodel(data, param; D²=nothing)
+function fitmodel(data, param; D²=nothing, chatty=true)
     D² = isnothing(D²) ? geodesics(data, param.k).^2 : D²
 
     M = model(size(data,1), param.dₒ;
@@ -193,13 +200,14 @@ function fitmodel(data, param; D²=nothing)
         valid = Float64[]
     )
 
+    progress = Progress(param.N; desc=">training model", output=stderr)
     log = (n) -> begin
-        if (n-1) % param.δ == 0 
-            @show n
-
-            push!(E.train,loss(batch.train, index.train, true))
-            push!(E.valid,loss(batch.valid, index.valid, true))
+        if (n-1) % param.δ == 0
+            push!(E.train,loss(batch.train, index.train, chatty))
+            push!(E.valid,loss(batch.valid, index.valid, chatty))
         end
+
+        next!(progress)
 
         nothing
     end

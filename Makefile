@@ -1,5 +1,5 @@
 # housekeeping
-.PHONY: all
+.PHONY: all archive clean
 .SUFFIXES:
 
 # variables
@@ -24,13 +24,13 @@ $(DATA)/$(DIR)/model/norms.jld2: param/$(DIR)/normalize.jl $(shell find $(DATA)/
 $(DATA)/$(DIR)/model/model.jld2: param/$(DIR)/model.jl $(DATA)/$(DIR)/model/norms.jld2
 	$$(FITMODEL) -o $$@ -p $$^
 
-MODELS+=$(DATA)/$(DIR)/model/model.bson
+MODELS+=$(DATA)/$(DIR)/model/model.jld2
 NORMED+=$(DATA)/$(DIR)/model/norms.jld2
 
 
 endef
 
-all: normed
+all: models
 
 # generate individual data rules
 data.mk: Makefile
@@ -40,3 +40,12 @@ data.mk: Makefile
 
 normed: $(NORMED)
 models: $(MODELS)
+
+archive:
+	@echo ">archiving current models";\
+	$(JULIA) bin/archive.jl $(DATA) $(DIRECTORIES)
+
+# TODO: clean up figures
+clean:
+	@echo ">removing models";\
+	rm -f $(NORMED) $(MODELS)
