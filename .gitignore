@@ -2,4 +2,5 @@ bin
 figs
 static
 nb
+docs/build
 *.jld2

@@ -1,6 +1,7 @@
 # housekeeping
-.PHONY: all archive clean
+.PHONY: all archive clean documentation
 .SUFFIXES:
+.SECONDARY:
 
 # variables
 DATA=$(HOME)/root/data/seqspace
@@ -44,6 +45,9 @@ models: $(MODELS)
 archive:
 	@echo ">archiving current models";\
 	$(JULIA) bin/archive.jl $(DATA) $(DIRECTORIES)
+
+documentation:
+	cd docs && $(JULIA). make.jl
 
 # TODO: clean up figures
 clean:
