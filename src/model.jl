@@ -91,9 +91,9 @@ function model(dᵢ, dₒ; Ws=Int[], normalizes=Int[], dropouts=Int[], σ=elu)
     length(normalizes) > 0 && length(Ws) < maximum(normalizes) ≤ 0 && error("invalid normalization layer position")
 
     layers = LayerIterator(
-                [dᵢ; Ws; dₒ], 
+                [dᵢ; Ws; dₒ],
                 Set(dropouts),
-                Set(normalizes), 
+                Set(normalizes),
                 σ₀, tanh, σ
              )
 

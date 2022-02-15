@@ -19,7 +19,7 @@ panic(msg) = error(msg)
 # ------------------------------------------------------------------------
 # geometric file formats
 
-plytype = Dict{String, Type}(
+const plytype = Dict{String, Type}(
     "char"   => Int8,    "int8"    => Int8,
     "short"  => Int16,   "int16"   => Int16,
     "int"    => Int32,   "int32"   => Int32,

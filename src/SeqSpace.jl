@@ -28,6 +28,38 @@ export marshal, unmarshal
 # ------------------------------------------------------------------------
 # types
 
+"""
+    mutable struct HyperParams
+        dₒ :: Int
+        Ws :: Array{Int,1}
+        BN :: Array{Int,1}
+        DO :: Array{Int,1}
+        N  :: Int
+        δ  :: Int
+        η  :: Float64
+        B  :: Int
+        V  :: Int
+        k  :: Int
+        γₓ :: Float32
+        γᵤ :: Float32
+        g  :: Function
+    end
+
+HyperParams is a collection of parameters that specify the network architecture and training hyperparameters of the autoencoder.
+`dₒ` is the desired output dimensionality of the encoding layer
+`Ws` is a collection of the network layer widths. The number of entries controls the depth. The decoder is mirror-symmetric.
+`BN` is the collection of layers that will be _followed_ by batch normalization.
+`DO` is the collection of layers that will be _followed_ by dropout.
+`N`  is the number of epochs to train against
+`δ`  is the number of epochs that will be sampled for logging
+`η`  is the learning rate
+`B`  is the batch size
+`V`  is the number of points to partition for validation purposes, i.e. won't be training against
+`k`  is the number of neighbors to use to estimate geodesics
+`γₓ` is the prefactor of distance soft rank loss
+`γᵤ` is the prefactor of uniform density loss
+`g ` is the metric given to latent space
+"""
 mutable struct HyperParams
     dₒ :: Int          # output dimensionality
     Ws :: Array{Int,1} # (latent) layer widths
@@ -41,11 +73,24 @@ mutable struct HyperParams
     k  :: Int          # number of neighbors to use to estimate geodesics
     γₓ :: Float32      # prefactor of distance soft rank loss
     γᵤ :: Float32      # prefactor of uniform density loss
-    γₗ :: Float32      # prefactor of latent space extra dimensions
     g  :: Function     # metric given to latent space
 end
 
+"""
+    euclidean²(x)
+
+Generate the matrix of pairwise distances between vectors `x`, assuming the Euclidean metric.
+`x` is assumed to be ``d \times N`` where ``d`` denotes the dimensionality of the vector and ``N`` denotes the number.
+"""
 const euclidean²(x) = sum( (x[d,:]' .- x[d,:]).^2 for d in 1:size(x,1) )
+
+"""
+    cylinders²(x)
+
+Generate the matrix of pairwise distances between vectors `x`, assuming the points are distributed on a cylinder.
+`x` is assumed to be ``d \times N`` where ``d`` denotes the dimensionality of the vector and ``N`` denotes the number.
+The first coordinate of `x` is assumed to be the polar coordinate.
+"""
 function cylinder²(x)
     c = cos.(π.*(x[1,:]))
     s = sin.(π.*(x[1,:]))
@@ -53,20 +98,44 @@ function cylinder²(x)
     return (c' .- c).^2 .+ (s' .- s).^2 .+ euclidean²(x[2:end,:])
 end
 
-HyperParams(; dₒ=2, Ws=Int[], BN=Int[], DO=Int[], N=200, δ=10, η=1e-3, B=64, V=1, k=12, γₓ=1, γᵤ=1e-1, γₗ=100, g=euclidean²) = HyperParams(dₒ, Ws, BN, DO, N, δ, η, B, V, k, γₓ, γᵤ, γₗ, g)
+HyperParams(; dₒ=2, Ws=Int[], BN=Int[], DO=Int[], N=200, δ=10, η=1e-3, B=64, V=1, k=12, γₓ=1, γᵤ=1e-1, g=euclidean²) = HyperParams(dₒ, Ws, BN, DO, N, δ, η, B, V, k, γₓ, γᵤ, g)
 
+"""
+    struct Result
+        param :: HyperParams
+        loss  :: NamedTuple{(:train, :valid), Tuple{Array{Float64,1},Array{Float64,1}} }
+        model
+    end
+
+Store the output of a trained autoencoder.
+`param` stores the input hyperparameters used to design and train the neural network.
+`loss` traces the dynamics of the optimization found during training.
+`model` represents the learned pullback and pushforward functions.
+"""
 struct Result
     param :: HyperParams
     loss  :: NamedTuple{(:train, :valid), Tuple{Array{Float64,1},Array{Float64,1}} }
     model
 end
 
+"""
+    marshal(r::Result)
+
+Serialize a trained autoencoder to binary format suitable for disk storage.
+Store model in binary JSON format.
+"""
 function marshal(r::Result)
     io = IOBuffer()
     BSON.bson(io, Dict(k=>v for (k,v) in pairs(r.model)))
     return Result(r.param,r.loss,take!(io))
 end
 
+"""
+    unmarshal(r::Result)
+
+Deserialize a trained autoencoder from binary format to semantic format.
+Represents model as a collection of functors.
+"""
 function unmarshal(r::Result)
     io = IOBuffer(r.model)
     return Result(r.param,r.loss,(k=v for (k,v) in BSON.load(io)))
@@ -128,6 +197,14 @@ function cor(x, y)
     return (mean(x.*y) .- μ.x.*μ.y) / sqrt(var.x*var.y)
 end
 
+"""
+    buildloss(model, D², param)
+
+Return a loss function used to train a neural network `model` according to input hyperparameters `param`.
+`model` is a object with three fields, `pullback`, `pushforward`, and `identity`.
+`pullback` and `pushforward` refers to the encoder and decoder layers respectively, while the identity is the composition.
+`D²` is a matrix of pairwise distances that will be used as a quenched hyperparameter in the distance soft rank loss.
+"""
 function buildloss(model, D², param)
     return function(x, i::T, output::Bool) where T <: AbstractArray{Int,1}
         z = model.pullback(x)
@@ -164,6 +241,15 @@ end
 # ------------------------------------------------------------------------
 # main functions
 
+"""
+    linearprojection(x, d; Δ=1, Λ=nothing)
+
+Project an empirical distance matrix `x` onto `d` top principal components.
+Centers the result to have zero mean.
+Returns the projection, as well as a function to transform a projected vector back to the embedding space.
+Ignores top `Δ` principal components.
+If `Λ` is not nothing, assumes it is a precomputed SVD decomposition.
+"""
 function linearprojection(x, d; Δ=1, Λ=nothing)
     Λ = isnothing(Λ) ? svd(x) : Λ
 
@@ -182,6 +268,15 @@ function linearprojection(x, d; Δ=1, Λ=nothing)
     )
 end
 
+"""
+    fitmodel(data, param; D²=nothing, chatty=true)
+
+Train an autoencoder model, specified with `param` hyperparams, to fit `data`.
+`data` is assumed to be sized ``d \times N`` where ``d`` and ``N`` are dimensionality and cardinality respectively.
+If not nothing, `D²` is assumed to be a precomputed distance matrix of point cloud `data`.
+If `chatty` is true, function will print to `stdout`.
+Returns a `Result` type.
+"""
 function fitmodel(data, param; D²=nothing, chatty=true)
     D² = isnothing(D²) ? geodesics(data, param.k).^2 : D²
 
@@ -222,6 +317,12 @@ function fitmodel(data, param; D²=nothing, chatty=true)
     return Result(param, E, M), (batch=batch, index=index, D²=D², log=log)
 end
 
+"""
+    extendfit(result::Result, input, epochs)
+
+Retrain model within `result` on `input` data for `epochs` more iterations.
+Returns a new `Result`.
+"""
 function extendfit(result::Result, input, epochs)
     loss = buildloss(result.model, input.D², result.param)
     train!(result.model, input.y.train, input.index.train, loss; 

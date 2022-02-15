@@ -5,7 +5,7 @@ using Random, Distributions, Statistics
 
 export fitmixture, EM
 
-function MLE(x; γ=missing) 
+function MLE(x; γ=missing)
     if ismissing(γ)
         γ = ones(size(x))
     end
@@ -39,7 +39,7 @@ function weights(γ)
     return sum(γ, dims=1)'/sum(γ)
 end
 
-logρ(x,α,β) = (α*log(β) - loggamma(α)) .+ (α-1).*log.(x) .- β.*x 
+logρ(x,α,β) = (α*log(β) - loggamma(α)) .+ (α-1).*log.(x) .- β.*x
 ρ(x,α,β)    = (x != 0) ? exp(logρ(x,α,β)) : β^α / gamma(α)
 
 function posterior(x, Π, α, β; dropout=false)
@@ -99,7 +99,7 @@ end
 function EM(x, K::Integer; ϵ::Real = 1e-5, maxᵢ::Integer = 10000, verbose::Bool = false)
     μ, σ, S₀ = kmeans(x, K)
 
-    β = μ./σ.^2 
+    β = μ./σ.^2
     α = μ.*β
     Π = [sum(S₀.==k)/length(S₀) for k in 1:K]
 

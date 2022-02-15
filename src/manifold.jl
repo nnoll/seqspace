@@ -21,12 +21,29 @@ numdims(x) = sum(1 for d in 1:ndims(x) if size(x,d) > 1)
 # ------------------------------------------------------------------------
 # mesh type
 
+"""
+    struct Mesh{T <: Real}
+        r   :: Array{T, 2}
+        vₙ  :: Array{T, 2}
+        tri :: Array{Int, 2}
+    end
+
+Store a 2 dimensional triangular mesh, embedded into arbitrary dimensions.
+`r` and `vₙ` denote vertex positions and normals respectively.
+`tri` denotes (non-oriented) triangular faces.
+"""
 struct Mesh{T <: Real}
     r   :: Array{T, 2}     # vertex positions
     vₙ  :: Array{T, 2}     # vertex normals
     tri :: Array{Int, 2}   # triangular faces
 end
 
+"""
+    mesh(io::IO, type::Symbol=:obj)
+
+Load a `Mesh` object from stream `io` formatted with `type`.
+As of now, only `.obj` files are supported.
+"""
 function mesh(io::IO, type::Symbol=:obj)
     if type != :obj
         error("not implemented")
@@ -41,6 +58,12 @@ end
 # surface type
 
 # internal functions
+"""
+    ellipse(r)
+
+Fit an ellipse to 2D point cloud `r`.
+`r` is assumed to be sized ``N\times2``.
+"""
 function ellipse(r)
     # constrained least squares (constraint: 4AC-B² = 1)
     D = hcat(r[:,1].*r[:,1], r[:,1].*r[:,2], r[:,2].*r[:,2], r[:,1], r[:,2], ones(size(r, 1),1))
@@ -70,6 +93,27 @@ function ellipse(r)
     return [x₀, y₀, a, b, ϕ]
 end
 
+"""
+    struct Surface{T <: Real}
+        Θ  :: Array{T, 2}
+        x  :: Array{T}
+        L  :: T
+        Λ  :: Array{Polynomial{T}}
+        ∂Λ :: Array{Polynomial{T}}
+    end
+
+Store a representation of a 2D surface embedded into higher dimensional Euclidean space.
+Fits the surface by:
+  1. Partition the x axis so that each resultant interval has, on average, 20 points.
+  2. Fit points within each partition to a 2D ellipse.
+  3. Fit a polynomial function to each elliptical parameter over all partitions.
+  4. Use polynomials to estimate tangent vectors.
+`Θ` denotes the elliptical parameters fit per partition.
+`x` denotes the input data.
+`L` denotes the length along the x axis.
+`Λ` denotes the polynomials for each elliptical parameter.
+`∂Λ` denotes the derivative of polynomials for each elliptical parameter.
+"""
 struct Surface{T <: Real}
     Θ  :: Array{T, 2}
     x  :: Array{T}
@@ -79,7 +123,7 @@ struct Surface{T <: Real}
 
     # constructors
     Surface(Θ, x, L, Λ, ∂Λ) = new{eltype(x)}(Θ, x, L, Λ, ∂Λ)
-    
+ 
     function Surface(x; order=12, debug=false)
         nbin = size(x,1)÷20
         xbin = LinRange(minimum(x[:,1]), maximum(x[:,1]), nbin+1)
@@ -121,6 +165,14 @@ struct Surface{T <: Real}
     end
 end
 
+"""
+    function pullback(s::Surface, r)
+
+Transform Euclidean point cloud `r` into a 2D cylindrical projection defined by `s`.
+Cylindrical coordinates are [x,φ].
+Assumes all points within `r` are distributed over the surface.
+Assumes `r` is sized ``[N\times 3]``.
+"""
 function pullback(s::Surface, r)
     z₀ = r[:,1] ./ s.L
     x₀ = s.Λ[1].(z₀)
@@ -141,6 +193,13 @@ function pullback(s::Surface, r)
     return v
 end
 
+"""
+    function basis(s::Surface, r)
+
+Compute the tangent vectors ``\hat{\bm{e}}_\phi, \hat{\bm{e}}_x`` associated to each point within `r`.
+Assumes all points within `r` are distributed over the surface.
+Assumes `r` is sized ``[N\times 3]``.
+"""
 function basis(s::Surface, r)
     x  = pullback(s, r)
 
@@ -175,11 +234,27 @@ end
 # ------------------------------------------------------------------------
 # manifold type
 
+"""
+    struct Manifold{T <: Real}
+        mesh :: Mesh{T}
+        surf :: Surface{T}
+    end
+
+Store the representation of a differential geometry object.
+`mesh` is the empirical point cloud.
+`surf` is the estimated differentiable surface.
+"""
 struct Manifold{T <: Real}
     mesh :: Mesh{T}
     surf :: Surface{T}
 end
 
+
+"""
+    function pullback(ℳ::Manifold)
+
+Returns the 2D cylindrical projection of the mesh, as estimated by the internal surface.
+"""
 function pullback(ℳ::Manifold)
     x    = pullback(ℳ.surf, ℳ.mesh.r)
     maxₗ = maximum(hcat(abs.(x[ℳ.mesh.tri[:,1],2]-x[ℳ.mesh.tri[:,2],2]), 
@@ -191,6 +266,11 @@ end
 
 pullback(ℳ::Manifold, r) = pullback(ℳ.surf, r)
 
+"""
+    function order(tri, r)
+
+Reorder the triangulation so that all labels are counterclockwise.
+"""
 function order(tri, r)
     r21 = r[tri[:,2],:] .- r[tri[:,1],:]
     r32 = r[tri[:,3],:] .- r[tri[:,2],:]
@@ -205,6 +285,12 @@ function order(tri, r)
     return tri
 end
 
+"""
+    function triangulation(r₀, rᵢ)
+
+Return the triangle containing each point given in `rᵢ`.
+The triangulation used is delaunay triangulation defined by point cloud `r₀`.
+"""
 function triangulation(r₀, rᵢ)
     tri = order(delaunay(Array{eltype(r₀),2}(r₀'))', r₀)
 
@@ -246,6 +332,13 @@ function continuum(tri, ϕ, r)
     return [fit(ϕ[tri[t,:]], r[tri[t,:],:]) for t in 1:size(tri,1)]
 end
 
+"""
+    function interpolate(M, ϕ, r)
+
+Interpolate the tensor field `ϕ`, defined at points `r` onto the vertices of manifold `M`.
+Interpolation is computed by finding the containing triangle within the mesh of `M` for each point `r`.
+Linear interpolation is performed per face.
+"""
 function interpolate(M, ϕ, r)
     x, _ = pullback(M)
     y    = pullback(M.surf, r)

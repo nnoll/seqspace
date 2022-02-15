@@ -6,8 +6,8 @@ using SpecialFunctions, Interpolations
 
 using NMF, Optim, NLSolversBase, ForwardDiff
 
-import Base: 
-    size, 
+import Base:
+    size,
     IndexStyle, getindex, setindex!,
     +, -, *, /, %, ^,
     ∪
@@ -33,10 +33,10 @@ CountMatrix = "matrix.mtx"
 const ∞ = Inf
 const FitType = NamedTuple{
         (
-            :parameters, 
-            :uncertainty, 
-            :likelihood, 
-            :trend, 
+            :parameters,
+            :uncertainty,
+            :likelihood,
+            :trend,
             :cdf,
             :residuals
         ),
@@ -74,7 +74,7 @@ function trendline(x, y, n)
     x₀ = [exp(l); x₀; exp(r)]
     μ  = [y[argmin(x)]; μ; y[argmax(x)]]
     return extrapolate(
-        interpolate((x₀,), μ, Gridded(Linear())), 
+        interpolate((x₀,), μ, Gridded(Linear())),
         Line()
     )
 end
@@ -97,11 +97,11 @@ struct Count{T <: Real} <: AbstractArray{T,2}
     cell :: Array{AbstractString,1}
 
     Count(data::Array{T,2}, gene, cell) where T <: Real= begin
-        if length(gene) != size(data,1) 
+        if length(gene) != size(data,1)
             error("number of genes $(length(gene)) not equal to number of rows $(size(data,1))")
         end
 
-        if length(cell) != size(data,2) 
+        if length(cell) != size(data,2)
             error("number of cells $(length(cell)) not equal to number of columns $(size(data,2))")
         end
 
@@ -141,9 +141,9 @@ IndexStyle(seq::Count) = IndexCartesian()
 
 # integer indexes
 getindex(seq::Count, I::Vararg{Int,2}) = getindex(seq.data, I...)
-getindex(seq::Count, I::AbstractArray{<:Integer}, J) = Count(getindex(seq.data,I,J),seq.gene[I],seq.cell[J]) 
-getindex(seq::Count, I, J::AbstractArray{<:Integer}) = Count(getindex(seq.data,I,J),seq.gene[I],seq.cell[J]) 
-getindex(seq::Count, I::AbstractArray{<:Integer}, J::AbstractArray{<:Integer}) = Count(getindex(seq.data,I,J),seq.gene[I],seq.cell[J]) 
+getindex(seq::Count, I::AbstractArray{<:Integer}, J) = Count(getindex(seq.data,I,J),seq.gene[I],seq.cell[J])
+getindex(seq::Count, I, J::AbstractArray{<:Integer}) = Count(getindex(seq.data,I,J),seq.gene[I],seq.cell[J])
+getindex(seq::Count, I::AbstractArray{<:Integer}, J::AbstractArray{<:Integer}) = Count(getindex(seq.data,I,J),seq.gene[I],seq.cell[J])
 
 setindex!(seq::Count, v, I::Vararg{Int,2}) = setindex!(seq.data, v, I...)
 
@@ -195,7 +195,7 @@ svd(seq::Count) = svd(seq.data)
 
 # -- batch subselection
 
-function batches(seq::Count) 
+function batches(seq::Count)
     all = map(cells(seq)) do id
         s = split(id, "/")
         return length(s) > 1 ? s[1] : nothing
@@ -302,7 +302,7 @@ end
 # normalization
 
 function normalize(seq::Count; β₀=1, δβ¯²=10)
-    _, p = MLE.fit_glm(:negative_binomial, seq; 
+    _, p = MLE.fit_glm(:negative_binomial, seq;
         Γ=(β̄=β₀, δβ¯²=δβ¯², Γᵧ=nothing),
         run=(x) -> mean(x) > 1			
     )
@@ -312,7 +312,7 @@ function normalize(seq::Count; β₀=1, δβ¯²=10)
     model = MLE.generalized_normal(logγ)
     param = MLE.fit(model)
 
-    _, p = MLE.fit_glm(:negative_binomial, seq; 
+    _, p = MLE.fit_glm(:negative_binomial, seq;
        Γ=(β̄=β₀, δβ¯²=δβ¯², Γᵧ=param)
     )
 
@@ -334,7 +334,7 @@ function normalize(seq::Count; β₀=1, δβ¯²=10)
 
     return (
         normalized = Count(Z, seq.cell, seq.gene),
-        transform = (norm) -> let 
+        transform = (norm) -> let
             seq = Diagonal(1 ./(r.*u)) * norm * Diagonal(1 ./(c.*v))
             depth = sum(seq,dims=1)
             scale = mean(vec(depth))

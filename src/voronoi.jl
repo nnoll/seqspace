@@ -56,7 +56,7 @@ function areas(x)
     q = hcat(boundary(2), x)
     triangulation = delaunay(q)
 
-    a = 0.5*[ 
+    a = 0.5*[
         let
             q[1,t[1]]*(q[2,t[2]]-q[2,t[3]]) + 
             q[1,t[2]]*(q[2,t[3]]-q[2,t[1]]) + 

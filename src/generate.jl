@@ -2,9 +2,14 @@ module Generate
 
 using PyCall
 
-const map   = pyimport("mpl_toolkits.basemap")
-const Globe = map.Basemap()
+# const map   = pyimport("mpl_toolkits.basemap")
+# const Globe = map.Basemap()
 
+"""
+    sphere(N; R=1)
+
+Generate a spherical point cloud of `N` points with extent of radius `R`.
+"""
 function sphere(N; R=1)
     θ = π  .* rand(Float64, N)
     ϕ = 2π .* rand(Float64, N)
@@ -23,6 +28,13 @@ function spherical_distance(x; R=1)
     return R*atan.(sinΔψ, cosΔψ)
 end
 
+
+"""
+    globe(N)
+
+Generate a spherical point cloud of `N` points where all points are guaranteed to be sampled from land-masses from Earth.
+Uses mpl.basemap Python library.
+"""
 function globe(N)
     Θ = Array{Float64}(undef, N)
     Φ = Array{Float64}(undef, N)
@@ -42,6 +54,11 @@ function globe(N)
     return hcat(sin.(Θ).*cos.(Φ), sin.(Θ).*sin.(Φ), cos.(Θ))', hcat(Θ, Φ)'
 end
 
+"""
+    swissroll(N; z₀=10, R=1/20)
+
+Generate a point cloud of `N` distributed on a swiss roll manifold with unit radius and length ``\frac{z₀}{R}``.
+"""
 function swissroll(N; z₀=10, R=1/20)
     z = (z₀/R)*rand(Float64, N)
     ϕ = 1.5π .+ 3π .* rand(Float64, N)
@@ -49,6 +66,11 @@ function swissroll(N; z₀=10, R=1/20)
     return hcat(ϕ .* cos.(ϕ), ϕ .* sin.(ϕ), z)' .* R, hcat(ϕ, z)'
 end
 
+"""
+    torus(N; R=2, r=1)
+
+Generate a point cloud of `N` distributed on a torus, sized inner `r` and outer radius `R` respectively.
+"""
 function torus(N; R=2, r=1)
     θ = 2π  .* rand(Float64, N)
     ϕ = 2π .* rand(Float64, N)
