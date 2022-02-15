@@ -48,7 +48,7 @@ function cohortdatabase(stage::Int)
     )
 end
 
-function virtualembryo(;directory="/home/nolln/root/data/seqspace/drosophila/dvex")
+function virtualembryo(;directory="/home/nolln/src/seqspace/drosophila/dvex")
     expression, _, genes = GZip.open("$directory/bdtnp.txt.gz") do io
         read_matrix(io; named_cols=true)
     end
@@ -292,11 +292,11 @@ end
 function inversion(counts, genes; ν=nothing, ω=nothing, refdb=nothing)
     ref, pointcloud = refdb === nothing ? virtualembryo() : refdb
     qry = (
-        data = counts', 
+        data = counts',
         gene = columns(genes),
     )
 
-    Σ, ϕ = 
+    Σ, ϕ =
         if isnothing(ν) || isnothing(ω)
             cost_simple(ref, qry)
         else
@@ -308,7 +308,9 @@ function inversion(counts, genes; ν=nothing, ω=nothing, refdb=nothing)
     indx  = collect(values(ref.gene))
     for i in 1:size(ref.real,2)
         @show names[findfirst(indx .== i)]
-        @show cor(ref.real[:,i], ψ*qry.data[:,ϕ[i]])
+        if !isnothing(ϕ[i])
+            @show cor(ref.real[:,i], ψ*qry.data[:,ϕ[i]])
+        end
     end
 
     return (

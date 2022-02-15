@@ -19,7 +19,7 @@ The choice of sampling prior, and details of how the distribution is estimated, 
 
 ## Overview of current methods
 
-**FILL ME OUT**
+**TODO:** FILL OUT
 
 ## Our approach
 
@@ -73,7 +73,7 @@ Consequently, this forces us to define the statistically significant **rank** of
 The above results have been shown to hold for non-Gaussian Wigner noise matrices[^3], provided each element is still *iid*.
 This is manifestly *not* the case we care about; the normalization procedure must account for heterogeneous sampling variances across both cells and genes.
 However, it has been shown[^4][^5] that the distribution of eigenvalues converges almost surely to the Marchenko-Pastur distribution, provided the constraint of Eq.(2) is satisfied!
-In other words, the eigenvalues of a heteroskedastic matrix is expected converge to the Marchenko-Pastur distribution, provided the row and column variances are uniform (set to unity for convenience).
+In other words, the eigenvalues of a heteroskedastic matrix is expected converge to that of a random Wigner matrix, provided the row and column variances are uniform (set to unity for convenience).
 
 For the remainder of this section, assume the count matrix is sampled from a Poisson distribution, such that ``\langle\delta_{\alpha,i}^2\rangle = \mu_{\alpha,i}``.
 As ``n_{\alpha,i}`` is an unbiased estimator for the mean ``\mu_{\alpha,i}``, Eq (2) reduces to
@@ -81,11 +81,66 @@ As ``n_{\alpha,i}`` is an unbiased estimator for the mean ``\mu_{\alpha,i}``, Eq
 \displaystyle\sum\limits_{\alpha}c_\alpha^2 n_{\alpha, i} g_i^2 = N_g \quad \text{and} \quad \displaystyle\sum\limits_{i}c_\alpha^2 n_{\alpha,i} g_i^2 = N_c
 ```
 which provides an explicit system of equations to estimate the scaling factors ``c_\alpha`` and ``g_i``.
+Once obtained, ``\tilde{\mu}_{\alpha,i}`` can be estimated via singular value decomposition of ``c_\alpha n_{\alpha,i} g_i``; all components with singular value greater than ``\bar{\lambda} = \sqrt{N_c}+\sqrt{N_g}`` can be confidently attributed to the "true mean" ``\mu_{\alpha,i}`` while all other components fall amongst the noise.
+An example is shown below:
+
+**TODO**: ADD FIGURE
 
 [^3]: [Asymptotics of Sample Eigenstructure for a Large Dimensional Spiked Covariance Model](http://www3.stat.sinica.edu.tw/statistica/oldpdf/A17n418.pdf)
 [^4]: [Biwhitening Reveals the Rank of a Count Matrix](https://arxiv.org/abs/2103.13840)
-[^5]: [A Review of matrix scaling and Sinkhorn's Normal Form for Matrices and Positive Maps](https://arxiv.org/abs/1609.06349)
+[^5]: [A Review of Matrix Scaling and Sinkhorn's Normal Form for Matrices and Positive Maps](https://arxiv.org/abs/1609.06349)
 
 #### Heteroskedastic Negative Binomial
+
+A negative binomial distribution is often used to model overdispersed count data, i.e. a process in which the variance grows superlinearly with the mean.
+Canonically the distribution arises from the distribution of the number of successes (with probabiliy ``p``) obtained after ``\phi`` failures of a Bernoulli process.
+However, the generative stochastic process can equivalently be modelled as an underlying Poisson process in which the emission rate is itself a stochastic variable drawn from a Gamma distribution.
+This allows us to analytically continue ``\phi`` from an integer to the reals.
+Provided we have estimated the mean ``\mu`` and the overdisperson factor ``\phi``, the unbiased estimator for the variance is given by
+```math
+    \langle \delta^2 \rangle= = \mu\frac{1 + \mu\phi}{1 + \phi}
+```
+Direct substitution into Eq. (2) would provide the necessary cell-specific $c_\alpha$ and gene-specific $g_i$ scaling factors.
+
+## Empirical Sampling Distribution Estimation
+
+As such, in order to normalize the estimated sampling variance, we must formulate a method to fit a negative binomial to the measured count data _per gene_.
+We parameterize the distribution as follows:
+```math
+    p\left(n|\mu,\phi\right) = \frac{\Gamma\left(n+\phi\right)}{\Gamma\left(n+1\right)\Gamma\left(\phi\right)}\left(\frac{\mu}{\mu+\phi}\right)^n\left(\frac{\phi}{\mu+\phi}\right)^\phi
+```
+
+### Generalized Linear Model
+
+A central complication in modeling counts of a given gene _across_ cells with the above function is that there are confounding variables that require explicit consideration.
+For the present discussion, we explictly model the hetereogeneous sequencing depth across cells: naively we expect that if we sequenced a given cell with ``2x`` depth, each gene should scale accordingly.
+As such, we formulate a generalized linear model
+```math
+    \log \mu_{i\alpha} = A_i + B_i \log n_{\alpha}
+```
+where ``n_\alpha`` denotes the total sequencing depth of cell ``\alpha``.
+We note this formulation can be easily extended to account for other confounds such as batch effect or cell type.
+The likelihood function for cell ``\alpha``, gene ``i`` is
+```math
+    p\left(n_{i\alpha}|A_i, B_i, n_\alpha, \phi_i\right) = \frac{\Gamma\left(n_{i\alpha}+\phi_i\right)}{\Gamma\left(n_{i\alpha}+1\right)\Gamma\left(\phi_i\right)}\left(\frac{\mu_{i\alpha}}{\mu_{i\alpha}+\phi_i}\right)^{n_{i\alpha}}\left(\frac{\phi_i}{\mu_{i\alpha}+\phi_i}\right)^{\phi_{i}}
+```
+
+### Maximum Likelihood Estimation
+``\{A_i, B_i, \phi_i\}`` represent ``3N_g`` parameters we must infer from the data.
+A priori this seems underdetermined given our ``N_c \times N_g`` sized matrix and thus we attempt to estimate all parameters within a maximum likelihood framework.
+This is equivalent to minimizing (for each gene independently)
+```math
+    \mathcal{L} = \displaystyle\sum\limits_{\alpha}
+        \left(n_{i\alpha} + \phi_i\right)\log\left(e^{A_{i}}n_\alpha^{B_i} + \phi_i\right) 
+      - \phi_i\log\left(\phi_i\right)
+      - n_{i\alpha}\left(A_i + B_i\log n_\alpha\right)
+      - \log\left(\frac{\Gamma\left(n_{i\alpha}+\phi_i\right)}{\Gamma\left(n_{i\alpha}+1\right)\Gamma\left(\phi_i\right)}\right)
+```
+
+### Overfitting
+
+### Maximum A Posterior
+
+#### Empirical Estimation of Priors
 
 ## Results

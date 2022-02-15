@@ -6,6 +6,11 @@ makedocs(
     modules  = [SeqSpace],
     pages    = [
         "Home"         => "index.md",
+        "Science"      => [
+            "sci/normalize.md",
+            "sci/inference.md",
+            "sci/autoencode.md",
+        ],
         "Library"      => [
             "lib/distance.md",
             "lib/generate.md",
@@ -25,10 +30,5 @@ makedocs(
         "Command Line" => [
             "cli/normalize.md",
         ],
-        "Science"      => [
-            "sci/normalize.md",
-            "sci/inference.md",
-            "sci/autoencode.md",
-        ]
     ]
 )
