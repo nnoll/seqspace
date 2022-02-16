@@ -2,9 +2,7 @@ module scRNA
 
 using GSL
 using Statistics, StatsBase, Distributions
-using SpecialFunctions, Interpolations
-
-using NMF, Optim, NLSolversBase, ForwardDiff
+using SpecialFunctions
 
 import Base:
     size,

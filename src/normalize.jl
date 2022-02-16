@@ -25,7 +25,7 @@ function negativebinomial(count, depth)
     end
 
     μ  = logmean(count)
-    Θ₀ = [log(μ), 1.25, logvar(count)/μ - 1]
+    Θ₀ = [log(μ), 1, logvar(count)/μ - 1]
     if Θ₀[end] < 0 || isinf(Θ₀[end]) || isnan(Θ₀[end])
         Θ₀[end] = 1
     end
@@ -102,6 +102,15 @@ function prior(params)
     return Optim.minimizer(hyperparam)
 end
 
+const FitType = NamedTuple{
+    (
+     :likelihood,
+     :parameters,
+     :uncertainty,
+     :residual
+    ),
+    Tuple{Float64, Vector{Float64}, Vector{Float64}, Vector{Float64}}
+}
 function fit(stochastic, count, depth)
     model = stochastic(count, depth)
     param = optimize(model.likelihood, model.constraint, model.Θ₀, IPNewton())
@@ -139,7 +148,10 @@ function glm(data; stochastic=negativebinomial, ϵ=1)
         col |> vec |> average
     end
 
-    fits = [fit(stochastic,vec(gene),depth) for gene in eachrow(data)]
+    fits = Array{NamedTuple}(undef,size(data,1))
+    Threads.@threads for (i,gene) in collect(enumerate(eachrow(data)))
+        fits[i] = fit(stochastic,vec(gene),depth)
+    end
 
     return (
         likelihood = map((f)->f.likelihood,  fits),

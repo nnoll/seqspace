@@ -133,7 +133,7 @@ function cost_simple(ref, qry)
     for i in 1:size(ref.data,2)
         isnothing(ϕ[i]) && continue
 
-        r  = ref.data[:,i]
+        r  = ref.real[:,i]
         q  = qry.data[:,ϕ[i]]
 
         R = 2*σ.((rank(r)./length(r))) .- 1
@@ -165,12 +165,12 @@ function cost_scan(ref, qry, ν, ω)
     for i in 1:size(ref.data,2)
         isnothing(ϕ[i]) && continue
 
-        r = ref.data[:,i]
+        r = ref.real[:,i]
         q = qry.data[:,ϕ[i]]
 
         # χ = σ.(rank(q)./(length(q)).^ν[i])
 
-        R = (2 .* r) .- 1
+        R = (2 .* rank(r)./length(r)) .- 1
         Q = (2 .* σ.((rank(q)./length(q)).^ν[i])) .- 1
         # Q = (2 .* χ) .- 1
 
@@ -188,7 +188,7 @@ function transform(src, dst, ν)
     qry  = σ.(rank(src) / length(src))
 
     return [
-        let 
+        let
             i = searchsorted(pos, q)
             if first(i) == last(i)
                 ref[first(i)]
@@ -210,8 +210,8 @@ function cost_transform(ref, qry; ω=nothing, ν=nothing)
     ϕ = match(ref.gene, qry.gene)
     Σ = zeros(size(ref.data,1), size(qry.data,1))
 
-    ω = isnothing(ω) ? ones(size(ref.real,2)) : ω 
-    ω = ω / mean(ω)
+    ω = isnothing(ω) ? ones(size(ref.real,2)) : ω
+    ω = ω / sum(ω)
 
     ν = isnothing(ν) ? ones(size(ref.real,2)) : ν
 
@@ -298,7 +298,8 @@ function inversion(counts, genes; ν=nothing, ω=nothing, refdb=nothing)
 
     Σ, ϕ =
         if isnothing(ν) || isnothing(ω)
-            cost_simple(ref, qry)
+            # cost_simple(ref, qry)
+            cost_transform(ref, qry)
         else
             cost_scan(ref, qry, ν, ω)
         end
@@ -336,8 +337,8 @@ function make_objective(ref, qry)
     function objective(Θ)
         # β, ν, ω = #0.5, Θ[1:84], Θ[85:end] #ones(84)
         # Σ, ϕ    = cost_scan(ref, qry, ν, ω)
-        β = 15
-        ν, ω = Θ[1:79], nothing#Θ[80:end]
+        β = 10
+        ν, ω = Θ[1:84], Θ[85:end]
         Σ, ϕ = cost_transform(ref, qry; ω=ω, ν=ν)
 
         ψ  = sinkhorn(exp.(-(1 .+ β*Σ)))
@@ -376,7 +377,7 @@ function scan_params(count, genes)
 
     f = make_objective(ref,qry)
 
-    return bboptimize(f, 
+    return bboptimize(f,
                   SearchRange=[[(0.01, 10.0) for _ ∈ 1:84]; [(0.1, 2.0) for _ ∈ 1:84]],
                   # SearchRange=[(0.01, 10.0) for _ ∈ 1:(2*84)],
                   MaxFuncEvals=5000,
