@@ -96,7 +96,6 @@ function heteroskedastic(raw)
 		fig[1,1],
 		xscale=Makie.log10,
 		xlabel="cell sequencing depth",
-        xticks=([1e4, 1e5], [L"10^4", L"10^5"]),
 		ylabel="cumulative",
         yticks=([0, 0.25, 0.5, 0.75, 1.0], [L"0.0", L"0.25", L"0.50", L"0.75", L"1.00"])
 	)
@@ -147,13 +146,13 @@ function overdispersed(raw)
 		color=(:black,0.01),
 	)
 	lines!(ax1,
-		1e-3:1e2, 1e-3:1e2,
+		1e-2:1e4, 1e-2:1e4,
 		linewidth=2,
 		color=:red,
 		linestyle=:dashdot,
 		label="poisson",
 	)
-	ylims!(ax1, 1e-3, 1e3)
+	ylims!(ax1, 1e-2, 1e4)
 	axislegend(ax1, position = :rb)
     save("$FIG/overdispersed_mean_vs_variance.png", fig, px_per_unit=2)
 
