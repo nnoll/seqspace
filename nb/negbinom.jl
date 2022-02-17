@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.17.5
+# v0.17.7
 
 using Markdown
 using InteractiveUtils
@@ -103,8 +103,8 @@ end
 end
 
 # ╔═╡ deb992f3-72ad-48cb-92f4-b1abd04cfdcb
-raw, gene = counts("/home/nolln/mnt/data/drosophila/raw", "rep"); size(raw)
-#raw, gene = GZip.open(counts,"/home/nolln/mnt/data/drosophila/dvex/dge_raw.txt.gz"); size(raw)
+#raw, gene = counts("/home/nolln/mnt/data/drosophila/raw", "rep"); size(raw)
+raw, gene = open(counts,"../data/raw/dge_raw.txt"); size(raw)
 
 # ╔═╡ 8210f158-1d58-44e0-8733-586c584be4e1
 md"""
@@ -610,7 +610,7 @@ md"""
 Inference = ingredients("../src/infer.jl").Inference
 
 # ╔═╡ 6bf4f2a5-04f2-43cc-995a-78f1c7d1abb3
-database = Inference.virtualembryo(directory="/home/nolln/mnt/data/drosophila/dvex");
+database = Inference.virtualembryo(directory="../data/raw");
 
 # ╔═╡ 98506181-1e09-432e-9e47-68eeda650507
 inv_z = Inference.inversion(Z, Genes; refdb=database);
@@ -821,20 +821,20 @@ end
 # ╟─9d08d1ea-dc65-41ec-991e-e9229ce40cb4
 # ╟─def1d949-c5ef-4f5a-999c-42db1e6fa305
 # ╟─fa4c4080-b794-4b69-bdee-b941d83e80c1
-# ╟─4a53093f-702d-4c9d-85b0-e5f06bffada8
+# ╠═4a53093f-702d-4c9d-85b0-e5f06bffada8
 # ╟─f9469369-cf4e-4e56-8785-44d63e2af91e
-# ╟─4610b310-f2f8-47aa-8158-ecc453c6e145
-# ╟─1fc1bdf0-a03b-4799-9a9c-ff2f7e95a36f
+# ╠═4610b310-f2f8-47aa-8158-ecc453c6e145
+# ╠═1fc1bdf0-a03b-4799-9a9c-ff2f7e95a36f
 # ╠═77e68c01-447c-4bd9-b0a8-f6b82269c8e4
 # ╟─d43e0889-6b07-48a5-bbc1-20c37089b50b
 # ╠═5e4f0f97-80aa-4b09-8840-285428bb1faa
-# ╟─5cf21f9c-0f18-4544-910a-53639859373a
+# ╠═5cf21f9c-0f18-4544-910a-53639859373a
 # ╟─ebd96e2d-1146-4f57-9fbd-8b0c7496b553
 # ╠═e09c6169-4c0d-4534-abe9-cf791f185ffb
 # ╠═c3820cbf-70e8-49e7-bfe7-032a5b39515a
 # ╠═36ba7c41-bc1f-480d-bd3c-dc64c795aea6
 # ╠═cf324d59-c127-479f-8878-6bd2b17bce2e
-# ╟─cd718366-107a-440f-a2bc-9f9a6ec7c96d
+# ╠═cd718366-107a-440f-a2bc-9f9a6ec7c96d
 # ╠═7dee363d-b606-4d74-b73c-80978de0ef58
 # ╠═0326c120-1a3f-4ed6-aad8-dab05a1e1adf
 # ╠═7acdbbcf-2e99-4664-943f-89787d7901d8
