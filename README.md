@@ -1,4 +1,4 @@
-# SeqSpace
+# seqspace
 
 [![Documentation](https://img.shields.io/badge/Documentation-Link-blue.svg)](https://nnoll.github.io/seqspace/)
 
