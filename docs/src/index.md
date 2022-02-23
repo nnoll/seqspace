@@ -29,19 +29,19 @@ There are multiple ways to install the SeqSpace library
 
 ### From Julia REPL
 ```julia
-    (@v1.x) pkg> add https://github.com/nolln/seqspace.git
+    (@v1.x) pkg> add https://github.com/nnoll/seqspace.git
 ```
 
 ### From Command Line
 ```bash
-    julia -e 'using Pkg; Pkg.add("https://github.com/nolln/seqspace.git"); Pkg.build()'
+    julia -e 'using Pkg; Pkg.add("https://github.com/nnoll/seqspace.git"); Pkg.build()'
 ```
 
 ### Local Environment
 
 Clone the repository.
 ```bash
-    git clone https://github.com/nolln/seqspace.git && cd seqspace
+    git clone https://github.com/nnoll/seqspace.git && cd seqspace
 ```
 
 Build the package. This will create a seperate Julia environment for SeqSpace
