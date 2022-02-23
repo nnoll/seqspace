@@ -1,0 +1,2 @@
+site:
+	rsync -r ../build/ .
