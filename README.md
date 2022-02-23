@@ -23,7 +23,7 @@ Julia binaries for all operating systems can be found [here](https://julialang.o
 
 Clone the repository
 ```bash
-    git clone https://github.com/nnoll/seqspace.git && cd pangraph
+    git clone https://github.com/nnoll/seqspace.git && cd seqspace
 ```
 
 Build the package. This will create a separate Julia environment for **SeqSpace**
