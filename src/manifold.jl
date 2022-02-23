@@ -378,12 +378,24 @@ function interpolate(M, ϕ, r)
     end
 end
 
+"""
+    rescale(x)
+
+Rescale array `x` to run between ``[0,1]``.
+"""
 function rescale(x)
     min = minimum(x)
     max = maximum(x)
     return (x.-min)./(max.-min)
 end
 
+"""
+    scalar(M::Manifold, ϕ, field::Symbol)
+
+Return a scalar field `ϕ` interpolated onto either the embedded space of manifold `M` or the pullback.
+If `field` is :ℝ² the pullback is computed.
+If `field` is :ℝ³ the embedding space is returned.
+"""
 function scalar(M::Manifold, ϕ, field::Symbol)
     @match field begin
         :ℝ² => begin
@@ -408,6 +420,13 @@ function scalar(M::Manifold, ϕ, field::Symbol)
     end
 end
 
+"""
+    scalar(M::Manifold, ϕ, field::Symbol)
+
+Return a vector field field `ϕ` interpolated onto either the embedded space of manifold `M` or the pullback.
+If `field` is :ℝ² the pullback is computed. Only the tangent space component is kept.
+If `field` is :ℝ³ the embedding space is returned.
+"""
 function vector(ℳ::Manifold, ϕ, field::Symbol)
     @match field begin
         :ℝ² => begin
@@ -438,6 +457,12 @@ function vector(ℳ::Manifold, ϕ, field::Symbol)
     end
 end
 
+"""
+    makefield(ℳ::Manifold, ϕ::AbstractArray; field::Symbol = :ℝ³)
+
+Return an arbitrary tensor field defined over _either_ the embedding space or the cylindrical pullback of manifold `M`.
+Higher level function than either [`scalar`](@ref) or [`vector`](@ref).
+"""
 function makefield(ℳ::Manifold, ϕ::AbstractArray; field::Symbol = :ℝ³)
     @match numdims(ϕ) begin
         1                         => return scalar(ℳ, ϕ, field)

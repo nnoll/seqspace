@@ -94,7 +94,7 @@ function model(dᵢ, dₒ; Ws=Int[], normalizes=Int[], dropouts=Int[], σ=elu)
                 [dᵢ; Ws; dₒ],
                 Set(dropouts),
                 Set(normalizes),
-                σ₀, tanh, σ
+                σ₀, σ₀, σ
              )
 
     F   = Chain(layers...)
@@ -172,7 +172,6 @@ function train!(model, data, index, loss; B=64, η=1e-3, N=100, log=noop)
     Θ   = params(model.identity)
     opt = ADAM(η)
 
-    trainmode!(model.identity)
     for n ∈ 1:N
         X, I = batch(data, B)
         for (i,x) ∈ zip(I,X)
@@ -189,7 +188,6 @@ function train!(model, data, index, loss; B=64, η=1e-3, N=100, log=noop)
         log(n)
     end
     @label done
-    testmode!(model.identity)
 end
 
 # ------------------------------------------------------------------------

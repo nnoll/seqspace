@@ -8,6 +8,9 @@ import Base:
 export RankedQueue
 export update!
 
+"""
+parent(i) 
+"""
 parent(i) = i÷2
 left(i)   = 2*i
 right(i)  = 2*i+1

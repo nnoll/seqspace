@@ -17,6 +17,7 @@ function euclidean²(X)
 
     return (vecnorm' .+ vecnorm) .- 2*dotprod
 end
+
 """
     euclidean(X)
 

@@ -122,12 +122,30 @@ end
     marshal(r::Result)
 
 Serialize a trained autoencoder to binary format suitable for disk storage.
-Store model in binary JSON format.
+Store parameters of model as contiguous array
 """
 function marshal(r::Result)
-    io = IOBuffer()
-    BSON.bson(io, Dict(k=>v for (k,v) in pairs(r.model)))
-    return Result(r.param,r.loss,take!(io))
+    # trainable parameters
+    ω₁ = r.model.pullback    |> cpu |> Flux.params |> collect
+    ω₂ = r.model.pushforward |> cpu |> Flux.params |> collect
+
+    # untrainables
+    β₁ = [ (μ=layer.μ,σ²=layer.σ²) for layer in r.model.pullback.layers    if isa(layer,Flux.BatchNorm) ]
+    β₂ = [ (μ=layer.μ,σ²=layer.σ²) for layer in r.model.pushforward.layers if isa(layer,Flux.BatchNorm) ]
+
+    return Result(r.param,r.loss,
+            (
+                pullback=(
+                    params=ω₁,
+                    batchs=β₁,
+                ),
+                pushforward=(
+                    params=ω₂,
+                    batchs=β₂,
+                ),
+                size=size(r.model.pullback.layers[1].weight,2)
+            )
+    )
 end
 
 """
@@ -137,8 +155,35 @@ Deserialize a trained autoencoder from binary format to semantic format.
 Represents model as a collection of functors.
 """
 function unmarshal(r::Result)
-    io = IOBuffer(r.model)
-    return Result(r.param,r.loss,(k=v for (k,v) in BSON.load(io)))
+    autoencoder = model(r.model.size, r.param.dₒ;
+          Ws         = r.param.Ws,
+          normalizes = r.param.BN,
+          dropouts   = r.param.DO
+    )
+
+    Flux.loadparams!(autoencoder.pullback,    r.model.pullback.params)
+    Flux.loadparams!(autoencoder.pushforward, r.model.pushforward.params)
+    Flux.trainmode!(autoencoder.identity, false)
+
+    i = 1
+    for layer in autoencoder.pullback.layers
+        if isa(layer, Flux.BatchNorm)
+            layer.μ  = r.model.pullback.batchs[i].μ
+            layer.σ² = r.model.pullback.batchs[i].σ²
+            i += 1
+        end
+    end
+
+    i = 1
+    for layer in autoencoder.pushforward.layers
+        if isa(layer, Flux.BatchNorm)
+            layer.μ  = r.model.pushforward.batchs[i].μ
+            layer.σ² = r.model.pushforward.batchs[i].σ²
+            i += 1
+        end
+    end
+
+    return Result(r.param, r.loss, autoencoder)
 end
 
 # ------------------------------------------------------------------------
@@ -221,14 +266,22 @@ function buildloss(model, D², param)
             let
                 dx, dz = Dx²[:,j], Dz²[:,j]
                 rx, rz = softrank(dx ./ mean(dx)), softrank(dz ./ mean(dz))
-                1 - cor(rx, rz)
+                1 - cor((1 .- rx).^2, (1 .- rz).^2)
             end for j ∈ 1:size(Dx²,2)
         )
 
+        ϵᵤ = mean(
+            let
+                zₛ = sort(z[d,:])
+                mean( ( (2*i/length(zₛ)-1) - s)^2 for (i,s) in enumerate(zₛ) )
+            end for d ∈ 1:size(z,1)
+        )
+        #=
         ϵᵤ = let
             a = Voronoi.volumes(z)
             std(a) / mean(a)
         end
+        =#
 
         if output
             println(stderr, "ϵᵣ=$(ϵᵣ), ϵₓ=$(ϵₓ), ϵᵤ=$(ϵᵤ)")
@@ -307,12 +360,14 @@ function fitmodel(data, param; D²=nothing, chatty=true)
         nothing
     end
 
+    Flux.trainmode!(M.identity, true)
     train!(M, batch.train, index.train, loss;
         η   = param.η,
         B   = param.B,
         N   = param.N,
         log = log
     )
+    Flux.trainmode!(M.identity, false)
 
     return Result(param, E, M), (batch=batch, index=index, D²=D², log=log)
 end

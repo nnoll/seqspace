@@ -48,6 +48,14 @@ function cohortdatabase(stage::Int)
     )
 end
 
+"""
+    virtualembryo(;directory="/home/nolln/mnt/data/drosophila/dvex")
+
+Load the Berkeley Drosophila Transcriptional Network Project database.
+`directory` should be path to folder containing two folders:
+  1. bdtnp.txt.gz    : gene expression over point cloud of virtual cells
+  2. geometry.txt.gz : spatial position (x,y,z) of point cloud of virtual cells.
+"""
 function virtualembryo(;directory="/home/nolln/mnt/data/drosophila/dvex")
     expression, _, genes = GZip.open("$directory/bdtnp.txt.gz") do io
         read_matrix(io; named_cols=true)
@@ -89,6 +97,13 @@ end
 # ------------------------------------------------------------------------
 # main functions
 
+"""
+    cost(ref, qry; α=1, β=1, γ=0, ω=nothing)
+
+Return the cost matrix ``J_{i\alpha}`` associated to matching cells in `qry` to cells in `ref`.
+The cost matrix is computed by a heuristic distance between quantiles.
+Deprecated.
+"""
 function cost(ref, qry; α=1, β=1, γ=0, ω=nothing)
     ϕ = match(ref.gene, qry.gene)
 
@@ -125,6 +140,13 @@ function cost(ref, qry; α=1, β=1, γ=0, ω=nothing)
     return Matrix(Σ), ϕ
 end
 
+"""
+    cost_simple(ref, qry)
+
+Return the cost matrix ``J_{i\alpha}`` associated to matching cells in `qry` to cells in `ref`.
+The cost matrix is computed by hamming distance between cells via transforming quantiles to continuous spin variables.
+Deprecated.
+"""
 function cost_simple(ref, qry)
     ϕ = match(ref.gene, qry.gene)
     Σ = zeros(size(ref.data,1), size(qry.data,1))
@@ -180,6 +202,12 @@ function cost_scan(ref, qry, ν, ω)
     return Matrix(Σ), ϕ
 end
 
+"""
+    transform(src, dst, ν)
+
+Transform distribution `src` to distribution `dst` by minimizing the Wasserstein metric.
+This is equivalent to ``x \to F^{-1}_{dst}\left(F_{src}\left(x\right)\right)`` where ``F`` denotes the cumulative density function.
+"""
 function transform(src, dst, ν)
     ref = sort(dst)
     pos = collect(1:length(dst))/length(dst)
@@ -206,6 +234,15 @@ function transform(src, dst, ν)
     ]
 end
 
+"""
+    cost_transform(ref, qry; ω=nothing, ν=nothing)
+
+    Return the cost matrix ``J_{i\alpha}`` associated to matching cells in `qry` to cells in `ref`.
+    The cost matrix is computed by:
+      1. Transforming the `qry` distribution to the `ref` distribution.
+      2. Looking at the SSE across transformed genes.
+    Use this unless you know what you are doing.
+"""
 function cost_transform(ref, qry; ω=nothing, ν=nothing)
     ϕ = match(ref.gene, qry.gene)
     Σ = zeros(size(ref.data,1), size(qry.data,1))
@@ -227,8 +264,20 @@ function cost_transform(ref, qry; ω=nothing, ν=nothing)
     return Matrix(Σ), ϕ
 end
 
+"""
+    sinkhorn(M::Array{Float64,2};
+                  a::Maybe{Array{Float64}} = missing,
+                  b::Maybe{Array{Float64}} = missing,
+                  maxᵢ::Integer            = 1000,
+                  τ::Real                  = 1e-5,
+                  verbose::Bool            = false
+    )
+
+Rescale matrix `M` to have row & column marginals `a` and `b` respectively.
+Will terminate either when constraints are held to within tolerance `τ` or the number of iterations exceed `maxᵢ`.
+"""
 function sinkhorn(M::Array{Float64,2};
-                  a::Maybe{Array{Float64}} = missing, 
+                  a::Maybe{Array{Float64}} = missing,
                   b::Maybe{Array{Float64}} = missing,
                   maxᵢ::Integer            = 1000,
                   τ::Real                  = 1e-5,
@@ -289,6 +338,14 @@ function inversion()
     )
 end
 
+"""
+    inversion(counts, genes; ν=nothing, ω=nothing, refdb=nothing)
+
+Infer the original position of scRNAseq data `counts` where genes, given by `genes` are arranged along rows.
+The sampling probability over space is computed by regularized optimal transport by comparing to the Berkeley Drosophila Transcription Network Project database.
+The cost matrix is determined by summing over the 1D Wasserstein metric over all genes within the BDTNP databse.
+Returns the inversion as a function of inverse temperature.
+"""
 function inversion(counts, genes; ν=nothing, ω=nothing, refdb=nothing)
     ref, pointcloud = refdb === nothing ? virtualembryo() : refdb
     qry = (
@@ -307,12 +364,6 @@ function inversion(counts, genes; ν=nothing, ω=nothing, refdb=nothing)
     ψ = sinkhorn(exp.(-(1 .+ 1.0*Σ)))
     names = collect(keys(ref.gene))
     indx  = collect(values(ref.gene))
-    for i in 1:size(ref.real,2)
-        @show names[findfirst(indx .== i)]
-        if !isnothing(ϕ[i])
-            @show cor(ref.real[:,i], ψ*qry.data[:,ϕ[i]])
-        end
-    end
 
     return (
         invert     = (β) -> sinkhorn(exp.(-(1 .+ β*Σ))),
@@ -322,6 +373,7 @@ function inversion(counts, genes; ν=nothing, ω=nothing, refdb=nothing)
             gene=ref.gene,
         ),
         match      = match,
+        index      = ϕ,
         cost       = Σ,
     )
 end

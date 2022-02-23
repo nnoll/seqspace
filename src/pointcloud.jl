@@ -26,6 +26,11 @@ const ∞ = Inf
 # ------------------------------------------------------------------------
 # utility functions
 
+"""
+    upper_tri(x)
+
+Returns the upper triangular portion of matrix `x`.
+"""
 upper_tri(x) = [ x[i.I[1], i.I[2]] for i ∈ CartesianIndices(x) if i.I[1] < i.I[2] ]
 function rrule(::typeof(upper_tri), m)
 	x = upper_tri(m)
@@ -62,6 +67,14 @@ end
 # ------------------------------------------------------------------------
 # types for neighborhood graph
 
+"""
+    struct Vertex{T <: Real}
+        position :: Array{T}
+    end
+
+Represents a single cell within a larger point cloud.
+The embedding space is normalized gene expression.
+"""
 struct Vertex{T <: Real}
     position :: Array{T}
 end
@@ -69,6 +82,14 @@ Vertex(x) = Vertex{eltype(x)}(x)
 
 eltype(v::Vertex{T}) where T <: Real = T
 
+"""
+    struct Edge{T <: Real}
+        verts    :: Tuple{Int, Int}
+        distance :: T
+    end
+
+Connects two neighboring `verts` by an edge of length `distance`.
+"""
 struct Edge{T <: Real}
     verts    :: Tuple{Int, Int}
     distance :: T
@@ -77,6 +98,14 @@ Edge(verts, distance) = Edge{typeof(distance)}(verts, distance)
 
 eltype(e::Edge{T}) where T <: Real = T
 
+"""
+    struct Graph{T <: Real}
+        verts :: Array{Vertex{T},1}
+        edges :: Array{Edge{T},1}
+    end
+
+A generic graph data structure containing vertices (points in space) stored within `verts` connected by `edges`.
+"""
 struct Graph{T <: Real}
     verts :: Array{Vertex{T}, 1}
     edges :: Array{Edge{T}, 1}
@@ -88,6 +117,12 @@ length(G :: Graph) = length(G.verts)
 # ------------------------------------------------------------------------
 # operations
 
+"""
+    neighborhood(x, k :: T; D=missing, accept=(d)->true) where T <: Integer
+
+Constructs a neighborhood graph of the `k` nearest neighbor for each point of cloud `x`.
+If `D` is given, it is assumed to be a dense matrix of pairwise distances.
+"""
 function neighborhood(x, k :: T; D=missing, accept=(d)->true) where T <: Integer
     D = ismissing(D) ? euclidean(x) : D
     G = Graph([Vertex(x[:,i]) for i ∈ 1:size(x,2)])
@@ -99,6 +134,12 @@ function neighborhood(x, k :: T; D=missing, accept=(d)->true) where T <: Integer
     return G
 end
 
+"""
+    neighborhood(x, k :: T; D=missing, accept=(d)->true) where T <: AbstractFloat
+
+Constructs a neighborhood graph of all neighbors within euclidean distance `k` for each point of cloud `x`.
+If `D` is given, it is assumed to be a dense matrix of pairwise distances.
+"""
 function neighborhood(x, k :: T; D=missing, accept=(d)->true) where T <: AbstractFloat
     D = ismissing(D) ? euclidean(x) : D
     G = Graph([Vertex(x[:,i]) for i ∈ 1:size(x,2)])
@@ -110,6 +151,11 @@ function neighborhood(x, k :: T; D=missing, accept=(d)->true) where T <: Abstrac
     return G
 end
 
+"""
+    adjacency_list(G :: Graph)
+
+Return the flattened adjacency list for graph `G`.
+"""
 function adjacency_list(G :: Graph)
     adj = [ Tuple{Int, Float64}[] for v ∈ 1:length(G.verts) ]
     for e ∈ G.edges
@@ -121,6 +167,11 @@ function adjacency_list(G :: Graph)
     return adj
 end
 
+"""
+    dijkstra!(dist, adj, src)
+
+Compute the shortest path from `src` to all other points given adjacency list `adj` and distances `dist` using Dijkstra's algorithm.
+"""
 function dijkstra!(dist, adj, src)
     dist      .= ∞
     dist[src]  = 0
@@ -144,6 +195,11 @@ function dijkstra!(dist, adj, src)
     end
 end
 
+"""
+    floyd_warshall(G :: Graph)
+
+Compute the shortest path from all vertices to all other vertices within graph `G`.
+"""
 function floyd_warshall(G :: Graph)
     V = length(G.verts)
     D = fill(∞, (V,V))
@@ -175,6 +231,13 @@ function floyd_warshall(G :: Graph)
     return D
 end
 
+"""
+    geodesics(G :: Graph; sparse=true)
+
+Compute the matrix of pairwise distances, given a neighborhood graph `G`, weighted by local Euclidean distance.
+If sparse is true, it will utilize Dijkstra's algorithm, individually for each point.
+If sparse is false, it will utilize the Floyd Warshall algorithm.
+"""
 function geodesics(G :: Graph; sparse=true)
     if sparse
         adj  = adjacency_list(G)
@@ -190,11 +253,23 @@ function geodesics(G :: Graph; sparse=true)
     end
 end
 
+"""
+    geodesics(x, k; D=missing, accept=(d)->true, sparse=true) 
+
+Compute the matrix of pairwise distances, given a pointcloud `x` and neighborhood cutoff `k`, from the resultant neighborhood graph.
+If sparse is true, it will utilize Dijkstra's algorithm, individually for each point.
+If sparse is false, it will utilize the Floyd Warshall algorithm.
+"""
 geodesics(x, k; D=missing, accept=(d)->true, sparse=true) = geodesics(neighborhood(x, k; D=D, accept=accept); sparse=sparse)
 
 # ------------------------------------------------------------------------
 # non ml dimensional reduction
 
+"""
+    mds(D², dₒ)
+
+Computes the lowest `dₒ` components from a _Multidimensional Scaling_ analysis given pairwise squared distances `D²`.
+"""
 function mds(D², dₒ)
     N = size(D²,1)
     C = I - fill(1/N, (N,N))
@@ -209,6 +284,13 @@ function mds(D², dₒ)
     return ν[:,1:dₒ] * Diagonal(sqrt.(λ[1:dₒ]))
 end
 
+"""
+    isomap(x, dₒ; k=12, sparse=true)
+
+Compute the isometric embedding of point cloud `x` into `dₒ` dimensions.
+Geodesic distances between all points are estimated by utilizing the shortest path defined by the neighborhood graph.
+The embedding is computed from a multidimensional scaling analysis on the resultant geodesics.
+"""
 function isomap(x, dₒ; k=12, sparse=true)
     G = neighborhood(x, k)
     D = geodesics(G; sparse=sparse)
@@ -218,6 +300,11 @@ end
 # ------------------------------------------------------------------------
 # dimension estimation
 
+"""
+    scaling(D, N)
+
+Estimate the Hausdorff dimension by computing how the number of points contained within balls scales with varying radius.
+"""
 function scaling(D, N)
 	Rₘᵢₙ = minimum(D[D .> 0])
 	Rₘₐₓ = maximum(D)
