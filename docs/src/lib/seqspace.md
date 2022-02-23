@@ -1,13 +1,13 @@
-# Mixture Models
+# SeqSpace API
 
 ## Types
 ```@autodocs
-Modules = [SeqSpace.Mixtures]
+Modules = [SeqSpace]
 Order = [:type, :constant]
 ```
 
 ## Functions
 ```@autodocs
-Modules = [SeqSpace.Mixtures]
+Modules = [SeqSpace]
 Order = [:function]
 ```

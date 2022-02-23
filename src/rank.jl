@@ -4,6 +4,12 @@ import ChainRulesCore: rrule, NoTangent
 
 export rank, softrank
 
+"""
+    partition(x; ϵ=1e-9)
+
+Compute the sizes of each partition of constant value obtained by isotonic regression of data `x`.
+`ϵ` denotes the tolerance for what is considered equal in floating point terms.
+"""
 function partition(x; ϵ=1e-9)
 	if length(x) == 0
 		return eltype(x)[]
@@ -20,6 +26,12 @@ function partition(x; ϵ=1e-9)
 	return sizes
 end
 
+"""
+    isotonic(x)
+
+Isotonically regress on data vector `x`.
+Returns the monotonically increasing fit.
+"""
 function isotonic(x)
 	n = length(x)
 	τ = collect(vec(1:n))
@@ -75,6 +87,11 @@ function isotonic(x)
 	
 end
 
+"""
+    ∇isotonic(x)
+
+Compute the gradient of isotonic regression with respect to the inputs about the solution point.
+"""
 function ∇isotonic(soln, x⃗)
 	y⃗ = zeros(Float32, size(x⃗))
 	
@@ -88,6 +105,11 @@ function ∇isotonic(soln, x⃗)
 	return y⃗
 end
 
+"""
+    projection(x)
+
+Regularize the ranking algorithm by euclidean projection onto the permutehedron.
+"""
 function projection(x)
 	n = length(x)
     w = Float32.(reverse(range(1/n, 1; length=n))) #vec(collect(n:-1:1))
@@ -100,7 +122,18 @@ function projection(x)
 	return primal[invperm(ι)]
 end
 
+"""
+    rank(x)
+
+Rank the items of vector `x` in ascending order.
+"""
 rank(x)             = invperm(sortperm(x))
+"""
+    softrank(x)
+
+Regularization of the ranking algorithm.
+Scaled euclidean projection onto the permutehedron.
+"""
 softrank(x; ϵ=Float32(1e-2)) = projection(x ./ ϵ)
 	
 function rrule(::typeof(softrank), x; ϵ=Float32(1e-2))

@@ -89,6 +89,19 @@ gammainc(a,x)  = GSL.sf_gamma_inc_P(a,x)
 # ------------------------------------------------------------------------
 # type w/ (de)serialization
 
+"""
+    struct Count{T <: Real} <: AbstractArray{T,2}
+        data :: Array{T,2}
+        gene :: Array{AbstractString,1}
+        cell :: Array{AbstractString,1}
+    end
+
+Data structure used to represent count data obtained during a scRNAseq sequencing experiment.
+Individual cells are stored as column vectors while expression of singular genes are obtained as row vectors.
+`data` contains the raw/normalized count matrix.
+`gene` and `cell` contain the row/column labels respectively.
+Genes and cells can be indexed _either_ by integers or names, i.e. strings.
+"""
 struct Count{T <: Real} <: AbstractArray{T,2}
     data :: Array{T,2}
     gene :: Array{AbstractString,1}
@@ -214,6 +227,16 @@ searchloci(seq::Count, prefix::AbstractString) = occursin.(prefix, seq.gene)
 # ------------------------------------------------------------------------
 # creation operators
 
+"""
+    load(dir::AbstractString; batch=missing)
+
+Read in scRNAseq experimental data from directory `dir`.
+The directory is expected to contain the following files:
+  1. barcodes.tsv : one cell name per line
+  2. features.tsv : one gene name per line
+  3. matrix.mtx : count matrix in mtx format
+If `batch` is not missing, then it will be appended to each cell label.
+"""
 function load(dir::AbstractString; batch=missing)
     !isdir(dir) && error("directory '$dir' not found")
 
@@ -237,6 +260,13 @@ end
 
 matchperm(a, b) = findfirst.(isequal.(a), (b,))
 
+"""
+    ∪(seq₁::Count{T}, seq₂::Count{S}) where {T <: Real, S <: Real}
+
+Collate count matrix `seq₁` and `seq₂` by taking the union across genes.
+Reorders rows of `seq₂` to match gene names of `seq₁`.
+Additional genes in `seq₂` not contained in `seq₁` are added as augmented rows.
+"""
 function ∪(seq₁::Count{T}, seq₂::Count{S}) where {T <: Real, S <: Real}
     T₀ = T ≠ S ? promote_rule(T,S) : T
     matches = matchperm(genes(seq₂), genes(seq₁)) # match 2 -> 1
@@ -267,6 +297,13 @@ end
 
 # NOTE: different merging strategy
 #       only common genes (intersection) are kept
+"""
+    ∩(seq₁::Count{T}, seq₂::Count{S}) where {T <: Real, S <: Real}
+
+Collate count matrix `seq₁` and `seq₂` by taking the union across genes.
+Reorders rows of `seq₂` to match gene names of `seq₁`.
+Only keeps genes present in _both_ `seq₁` and `seq₂`.
+"""
 function ∩(seq₁::Count{T}, seq₂::Count{S}) where {T <: Real, S <: Real}
     error("need to implement")
 end
@@ -274,11 +311,21 @@ end
 # ------------------------------------------------------------------------
 # filtering
 
+"""
+    filtergene(f, seq::Count)
+
+Filters genes of count matrix `seq` based upon row function `f`.
+"""
 function filtergene(f, seq::Count)
     ι = [f(seq[i,:], seq.gene[i]) for i in 1:ngenes(seq)]
     return seq[ι,:]
 end
 
+"""
+    filtercells(f, seq::Count)
+
+Filters cells of count matrix `seq` based upon column function `f`.
+"""
 function filtercell(f, seq::Count)
     ι = [f(seq[:,i], seq.cell[i]) for i in 1:ncells(seq)]
     return seq[:,ι]
@@ -347,6 +394,11 @@ end
 
 # TODO: gamma distribution?
 #       correlated genes?
+"""
+    generate(ngene, ncell; ρ=(α=Gamma(0.25,2), β=Normal(1,.01), γ=Gamma(3,3)))
+
+Generate scRNAseq data assuming a monoclonal population of cells sampled against a heteroskedastic negative binomial model.
+"""
 function generate(ngene, ncell; ρ=(α=Gamma(0.25,2), β=Normal(1,.01), γ=Gamma(3,3)))
     seq = zeros(Int, ngene, ncell)
     cdf = zeros(Float64, ngene, ncell)

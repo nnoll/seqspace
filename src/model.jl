@@ -21,6 +21,22 @@ export model, train!, validate, preprocess, update_dimension
 # types
 
 # Iterator
+"""
+    struct LayerIterator
+        width     :: Array{Int}
+        dropout   :: Set{Int}
+        normalize :: Set{Int}
+        σᵢ        :: Function
+        σₒ        :: Function
+        σ         :: Function
+    end
+
+An iterator used to generate dense latent layers within a neural network.
+`width` denotes the widths of each layer; the length of this array immediately determines the depth.
+`dropout` denotes the layers, as given by `width` that are followed by a dropout layer.
+`normalize` denotes the layers, as given by `width` that are followed by a batch normalization layer.
+`σᵢ`, `σₒ`, `σ` is the activation energy on the first, last, and intermediate layers respectively.
+"""
 struct LayerIterator
     width     :: Array{Int}
     dropout   :: Set{Int}
@@ -85,6 +101,14 @@ end
 # ------------------------------------------------------------------------
 # functions
 
+"""
+    model(dᵢ, dₒ; Ws=Int[], normalizes=Int[], dropouts=Int[], σ=elu)
+
+Initialize an autoencoding neural network with input dimension `dᵢ` and latent layers `dₒ`.
+`Ws` specifies both the width and depth of the encoder layer - the width of each layer is given as an entry in the array while the length specifies the depth.
+`normalizes` and `dropouts` denote which layers are followed by batch normalization and dropout specifically.
+The decoder layer is given the mirror symmetric architecture.
+"""
 function model(dᵢ, dₒ; Ws=Int[], normalizes=Int[], dropouts=Int[], σ=elu)
     # check for obvious errors here
     length(dropouts)   > 0 && length(Ws) < maximum(dropouts)   ≤ 0 && error("invalid dropout layer position")
@@ -108,6 +132,12 @@ function model(dᵢ, dₒ; Ws=Int[], normalizes=Int[], dropouts=Int[], σ=elu)
     )
 end
 
+"""
+    update_dimension(model, dₒ; ϵ = 1e-6)
+
+Add a colection of new neurons in the encoding layer to encode in the encoding layer to increase dimensions to `dₒ`.
+Model weights for the initial dimensions are kept the same.
+"""
 function update_dimension(model, dₒ; ϵ = 1e-6)
     F, F¯¹, 𝕀 = model
 
@@ -142,6 +172,11 @@ function update_dimension(model, dₒ; ϵ = 1e-6)
 end
 
 # data batching
+"""
+    batch(data, n)
+
+Randomly partition `data` into groups of size `n`.
+"""
 function batch(data, n)
     N = size(data,2)
 
@@ -154,6 +189,12 @@ function batch(data, n)
            (ι[lo(i):hi(i)] for i in 1:ceil(Int, N/n))
 end
 
+
+"""
+    validate(data, len)
+
+Reserve `len` samples from `data` during training process to allow for model validation.
+"""
 function validate(data, len)
     ι = randperm(size(data,2))
     return (
@@ -168,6 +209,17 @@ end
 function noop(epoch) end
 
 # data training
+"""
+    train!(model, data, index, loss; B=64, η=1e-3, N=100, log=noop)
+
+Trains autoencoder `model` on `data` by minimizing `loss`.
+`index` stores the underlying indices of data used for training.
+Will mutate the underlying parameters of `model`.
+Optional parameters include:
+  1. `B` denotes the batch size to be used.
+  2. `N` denotes the number of epochs.
+  3. `η` denotes the learning rate.
+"""
 function train!(model, data, index, loss; B=64, η=1e-3, N=100, log=noop)
     Θ   = params(model.identity)
     opt = ADAM(η)

@@ -1,6 +1,6 @@
 module Generate
 
-using PyCall
+# using PyCall
 
 # const map   = pyimport("mpl_toolkits.basemap")
 # const Globe = map.Basemap()
@@ -29,6 +29,7 @@ function spherical_distance(x; R=1)
 end
 
 
+#=
 """
     globe(N)
 
@@ -53,6 +54,7 @@ function globe(N)
 
     return hcat(sin.(Θ).*cos.(Φ), sin.(Θ).*sin.(Φ), cos.(Θ))', hcat(Θ, Φ)'
 end
+=#
 
 """
     swissroll(N; z₀=10, R=1/20)

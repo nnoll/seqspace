@@ -19,6 +19,11 @@ panic(msg) = error(msg)
 # ------------------------------------------------------------------------
 # geometric file formats
 
+"""
+    const plytype = Dict{String, Type}
+
+Lookup table for keywords of PLY file format matched to type information.
+"""
 const plytype = Dict{String, Type}(
     "char"   => Int8,    "int8"    => Int8,
     "short"  => Int16,   "int16"   => Int16,
@@ -36,6 +41,16 @@ const plytype = Dict{String, Type}(
 
 readwords(io::IO) = split(readline(io))
 
+"""
+    struct PLYProp
+        name :: Symbol
+        type :: Type
+        len  :: Union{Type,Nothing}
+    end
+
+Data structure that encapsulates a property of a PLY file.
+If `len` is not nothing, it is assumed to be a collection of properties, i.e. a list.
+"""
 struct PLYProp
     name :: Symbol
     type :: Type
@@ -48,6 +63,12 @@ PLYProp(word) = if word[1] == "list"
                     PLYProp(Symbol(word[2]), plytype[word[1]], nothing)
                 end
 
+"""
+    fill!(prop::Array{PLYProp}, io::IO)
+
+Read and parse a single line from `io` stream.
+Fill the interpreted property into `prop`.
+"""
 function fill!(prop::Array{PLYProp}, io::IO)
     word = readwords(io)
     while word[1] == "property" && length(word) >= 3
@@ -58,6 +79,12 @@ function fill!(prop::Array{PLYProp}, io::IO)
     return word
 end
 
+"""
+    readprops(io::IO, props::Array{PLYProp,1})
+
+Read a collection of properties from `io` stream into `props` array.
+Return a named tuple of parsed properties.
+"""
 function readprops(io::IO, props::Array{PLYProp,1})
     data = (p) -> begin
         if isnothing(p.len)
@@ -71,6 +98,11 @@ function readprops(io::IO, props::Array{PLYProp,1})
     return (; (prop.name => data(prop) for prop in props)...)
 end
 
+"""
+    read_ply(io::IO)
+
+Read an oriented mesh from `io` stream assuming bytes are formatted in PLY file format.
+"""
 function read_ply(io::IO)
     # magic
     line = readline(io)
@@ -126,6 +158,11 @@ function read_ply(io::IO)
     )
 end
 
+"""
+    read_obj(io::IO)
+
+Read an oriented mesh from `io` stream assuming bytes are formatted in OBJ file format.
+"""
 function read_obj(io::IO)
     bufᵥ = []
     bufₙ = []
@@ -155,6 +192,11 @@ end
 # ------------------------------------------------------------------------
 # matrix market exchange format
 
+"""
+    read_mtx(io::IO)
+
+Read a matrix from `io` stream assuming bytes are formatted in matrix exchance file format.
+"""
 function read_mtx(io::IO)
     header = readwords(io)
     if header[1] != "%%MatrixMarket"
@@ -232,6 +274,13 @@ read_barcodes(io::IO) = [line for line in eachline(io)]
 # ------------------------------------------------------------------------
 # scRNAseq file formats
 
+"""
+    read_matrix(io::IO; type=Float64, named_cols=false, named_rows=false, start_cols=1, start_rows=1)
+
+Read a white-space delimited matrix from `io` stream of element type `type`.
+If `named_cols` is true, the first line is assumed to be column labels.
+If `named_rows` is true, the first column of each row is assumed to be denote the label.
+"""
 function read_matrix(io::IO; type=Float64, named_cols=false, named_rows=false, start_cols=1, start_rows=1)
     cols = named_cols ? readwords(io)[start_cols:end] : nothing
 
@@ -263,6 +312,11 @@ function read_matrix(io::IO; type=Float64, named_cols=false, named_rows=false, s
     return data, rows, cols
 end
 
+"""
+    expand_matrix(io::IO, dir::String)
+
+Read a matrix in MTX format from `io` stream and dump as 3 text files into directory `dir`.
+"""
 function expand_matrix(io::IO, dir::String)
     if isdir(dir)
         error("directory exists")

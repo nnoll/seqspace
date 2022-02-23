@@ -9,7 +9,7 @@ export euclidean, jensen_shannon
     euclidean²(X)
 
 Compute the pairwise squared distances between points `X` according to the Euclidean metric.
-Assumes `X` is sized ``d \times N`` where ``d`` and ``N`` denote dimensionality and cardinality respectively.
+Assumes `X` is sized ``d \\times N`` where ``d`` and ``N`` denote dimensionality and cardinality respectively.
 """
 function euclidean²(X)
     dotprod = X'*X
@@ -22,7 +22,7 @@ end
     euclidean(X)
 
 Compute the pairwise distances between points `X` according to the Euclidean metric.
-Assumes `X` is sized ``d \times N`` where ``d`` and ``N`` denote dimensionality and cardinality respectively.
+Assumes `X` is sized ``d \\times N`` where ``d`` and ``N`` denote dimensionality and cardinality respectively.
 """
 euclidean(X) = .√euclidean²(X)
 
@@ -36,7 +36,7 @@ kullback_liebler(p, q) = sum(x .* log(x ./ y) for (x,y) ∈ zip(p,q) if x > 0 &&
 """
     jensen_shannon(P)
 Compute the pairwise distances between probability distributions `P` according to the Jensen-Shannon divergence.
-Assumes `P` is sized ``d \times N`` where ``d`` and ``N`` denote dimensionality and cardinality respectively.
+Assumes `P` is sized ``d \\times N`` where ``d`` and ``N`` denote dimensionality and cardinality respectively.
 """
 function jensen_shannon(P)
     D = zeros(size(P,2), size(P,2))

@@ -2,12 +2,12 @@
 
 ## Types
 ```@autodocs
-Modules = [SeqSpace.Distances]
+Modules = [SeqSpace.PointCloud.Distances]
 Order = [:type, :constant]
 ```
 
 ## Functions
 ```@autodocs
-Modules = [SeqSpace.Distances]
+Modules = [SeqSpace.PointCloud.Distances]
 Order = [:function]
 ```

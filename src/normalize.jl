@@ -10,14 +10,14 @@ const ∞ = Inf
 """
     logmean(x;ϵ=1)
 
-Compute the geometric mean: ``exp\left(\langle \log\left(x + \epsilon \right) \rangle\right) - \epsilon
+Compute the geometric mean: ``\exp\\left(\\langle \\log\\left(x + \\epsilon \\right) \\rangle\\right) - \\epsilon``
 """
 const logmean(x;ϵ=1) = exp.(mean(log.(x.+ϵ)))-ϵ
 
 """
     logmean(x;ϵ=1)
 
-Compute the geometric variance: ``exp\left(\langle \log\left(x + \epsilon \right)^2 \rangle_c\right) - \epsilon
+Compute the geometric variance: ``exp\\left(\\langle \\log\\left(x + \\epsilon \\right)^2 \\rangle_c\\right) - \\epsilon``
 """
 const logvar(x;ϵ=1)  = exp.(var(log.(x.+ϵ)))-ϵ
 

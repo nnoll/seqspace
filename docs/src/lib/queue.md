@@ -2,12 +2,12 @@
 
 ## Types
 ```@autodocs
-Modules = [SeqSpace.PriorityQueue]
+Modules = [SeqSpace.PointCloud.PriorityQueue]
 Order = [:type, :constant]
 ```
 
 ## Functions
 ```@autodocs
-Modules = [SeqSpace.PriorityQueue]
+Modules = [SeqSpace.PointCloud.PriorityQueue]
 Order = [:function]
 ```

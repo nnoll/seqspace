@@ -1,4 +1,4 @@
-# Differential Geometry
+# Point Cloud Differential Geometry
 
 ## Types
 ```@autodocs

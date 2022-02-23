@@ -1,4 +1,4 @@
-# Autoencoder
+# Autoencoder Manifold Learning
 
 ## Types
 ```@autodocs

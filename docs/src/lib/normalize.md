@@ -1,13 +1,13 @@
-# Maximum Likelihood Estimation
+# scRNAseq Normalization
 
 ## Types
 ```@autodocs
-Modules = [SeqSpace.MLE]
+Modules = [SeqSpace.Normalize]
 Order = [:type, :constant]
 ```
 
 ## Functions
 ```@autodocs
-Modules = [SeqSpace.MLE]
+Modules = [SeqSpace.Normalize]
 Order = [:function]
 ```

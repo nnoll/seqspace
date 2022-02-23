@@ -975,6 +975,12 @@ git-tree-sha1 = "a8cbf066b54d793b9a48c5daa5d586cf2b5bd43d"
 uuid = "99f44e22-a591-53d1-9472-aa23ef4bd671"
 version = "1.1.0"
 
+[[deps.MutableArithmetics]]
+deps = ["LinearAlgebra", "SparseArrays", "Test"]
+git-tree-sha1 = "ba8c0f8732a24facba709388c74ba99dcbfdda1e"
+uuid = "d8a4904e-b15c-11e9-3269-09a3773c0cb0"
+version = "1.0.0"
+
 [[deps.NLSolversBase]]
 deps = ["DiffResults", "Distributed", "FiniteDiff", "ForwardDiff"]
 git-tree-sha1 = "50310f934e55e5ca3912fb941dec199b49ca9b68"
@@ -1183,6 +1189,12 @@ version = "1.25.10"
 git-tree-sha1 = "77b3d3605fc1cd0b42d95eba87dfcd2bf67d5ff6"
 uuid = "647866c9-e3ac-4575-94e7-e3d426903924"
 version = "0.1.2"
+
+[[deps.Polynomials]]
+deps = ["LinearAlgebra", "MutableArithmetics", "RecipesBase"]
+git-tree-sha1 = "0107e2f7f90cc7f756fee8a304987c574bbd7583"
+uuid = "f27b6e38-b328-58d1-80ce-0feddd5e7a45"
+version = "3.0.0"
 
 [[deps.PositiveFactorizations]]
 deps = ["LinearAlgebra"]

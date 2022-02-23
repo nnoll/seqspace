@@ -13,8 +13,12 @@ include("io.jl")
 include("rank.jl")
 include("model.jl")
 include("voronoi.jl")
-include("distance.jl")
 include("pointcloud.jl")
+include("generate.jl")
+include("normalize.jl")
+include("manifold.jl")
+include("infer.jl")
+include("scrna.jl")
 
 using .PointCloud, .DataIO, .SoftRank, .ML
 

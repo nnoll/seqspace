@@ -62,7 +62,7 @@ end
     ellipse(r)
 
 Fit an ellipse to 2D point cloud `r`.
-`r` is assumed to be sized ``N\times2``.
+`r` is assumed to be sized ``N \\times 2``.
 """
 function ellipse(r)
     # constrained least squares (constraint: 4AC-B² = 1)
@@ -171,7 +171,7 @@ end
 Transform Euclidean point cloud `r` into a 2D cylindrical projection defined by `s`.
 Cylindrical coordinates are [x,φ].
 Assumes all points within `r` are distributed over the surface.
-Assumes `r` is sized ``[N\times 3]``.
+Assumes `r` is sized ``N \\times 3``.
 """
 function pullback(s::Surface, r)
     z₀ = r[:,1] ./ s.L
@@ -196,9 +196,9 @@ end
 """
     function basis(s::Surface, r)
 
-Compute the tangent vectors ``\hat{\bm{e}}_\phi, \hat{\bm{e}}_x`` associated to each point within `r`.
+Compute the tangent vectors ``\\hat{\\bm{e}}_\\phi, \\hat{\\bm{e}}_x`` associated to each point within `r`.
 Assumes all points within `r` are distributed over the surface.
-Assumes `r` is sized ``[N\times 3]``.
+Assumes `r` is sized ``N \\times 3``.
 """
 function basis(s::Surface, r)
     x  = pullback(s, r)

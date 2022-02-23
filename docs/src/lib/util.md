@@ -2,12 +2,12 @@
 
 ## Types
 ```@autodocs
-Modules = [SeqSpace.Utility]
+Modules = [SeqSpace.scRNA.Utility]
 Order = [:type, :constant]
 ```
 
 ## Functions
 ```@autodocs
-Modules = [SeqSpace.Utility]
+Modules = [SeqSpace.scRNA.Utility]
 Order = [:function]
 ```

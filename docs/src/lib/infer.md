@@ -1,4 +1,4 @@
-# Spatial Inference
+# Supervised Spatial Inference
 
 ## Types
 ```@autodocs

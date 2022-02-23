@@ -1,4 +1,4 @@
-# Generation
+# Point Cloud Generation
 
 ## Types
 ```@autodocs

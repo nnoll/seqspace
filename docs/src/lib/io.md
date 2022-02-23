@@ -1,4 +1,4 @@
-# DataIO
+# Data Input/Output
 
 ## Types
 ```@autodocs

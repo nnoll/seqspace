@@ -143,7 +143,7 @@ end
 """
     cost_simple(ref, qry)
 
-Return the cost matrix ``J_{i\alpha}`` associated to matching cells in `qry` to cells in `ref`.
+Return the cost matrix ``J_{i\\alpha}`` associated to matching cells in `qry` to cells in `ref`.
 The cost matrix is computed by hamming distance between cells via transforming quantiles to continuous spin variables.
 Deprecated.
 """
@@ -206,7 +206,7 @@ end
     transform(src, dst, ν)
 
 Transform distribution `src` to distribution `dst` by minimizing the Wasserstein metric.
-This is equivalent to ``x \to F^{-1}_{dst}\left(F_{src}\left(x\right)\right)`` where ``F`` denotes the cumulative density function.
+This is equivalent to ``x \\to F^{-1}_{dst}\\left(F_{src}\\left(x\\right)\\right)`` where ``F`` denotes the cumulative density function.
 """
 function transform(src, dst, ν)
     ref = sort(dst)
@@ -237,11 +237,11 @@ end
 """
     cost_transform(ref, qry; ω=nothing, ν=nothing)
 
-    Return the cost matrix ``J_{i\alpha}`` associated to matching cells in `qry` to cells in `ref`.
-    The cost matrix is computed by:
-      1. Transforming the `qry` distribution to the `ref` distribution.
-      2. Looking at the SSE across transformed genes.
-    Use this unless you know what you are doing.
+Return the cost matrix ``J_{i\\alpha}`` associated to matching cells in `qry` to cells in `ref`.
+The cost matrix is computed by:
+  1. Transforming the `qry` distribution to the `ref` distribution.
+  2. Looking at the SSE across transformed genes.
+Use this unless you know what you are doing.
 """
 function cost_transform(ref, qry; ω=nothing, ν=nothing)
     ϕ = match(ref.gene, qry.gene)
