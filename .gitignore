@@ -3,4 +3,14 @@ figs
 static
 nb
 docs/build
+
 *.jld2
+*.aux
+*.bbl
+*.blg
+*.fdb_latexmk
+*.fls
+*.out
+*.pdf
+*.log
+draftNotes.bib
