@@ -1,6 +1,12 @@
 # Manifold learning
 
-## Introduction
+## Empirical analysis
+
+* Point cloud scaling
+* Physically close cells are close in expression
+* Isomap analysis picks up spatial gradients
+
+## Initial considerations
 
 Want:
 * Dimensional reduction
@@ -13,7 +19,7 @@ Natural choice for an autoencoder.
 Utilize known positional labels as a validation step.
 Not used for training purposes.
 
-## Architecture
+## Network architecture
 
 How to pick depth? Width?
 Worry about overfitting: enter dropout and batch normalization.
