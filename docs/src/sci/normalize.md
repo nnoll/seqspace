@@ -34,7 +34,7 @@ Our goal during the normalization procedure is two-fold:
 ```@raw html
 <p align="center">
 <figure>
-  <img src="/assets/heteroskedastic.png" width="79%" />
+  <img src="/assets/drosophila/heteroskedastic.png" width="79%" />
   <figurecaption>
   Count matrix is heteroskedastic: variation of scales across genes (rows) and cells (columns)
   </figurecaption>
@@ -54,8 +54,8 @@ Owing to dropout and other sources of overdispersion, as shown empircally in the
 ```@raw html
 <p align="center">
 <figure>
-  <img src="/assets/overdispersed_mean_vs_variance.png" width="49%" />
-  <img src="/assets/overdispersed_zeros.png" width="49%" />
+  <img src="/assets/drosophila/overdispersed_mean_vs_variance.png" width="49%" />
+  <img src="/assets/drosophila/overdispersed_zeros.png" width="49%" />
   <figurecaption>
   scRNAseq data for Drosophila is overdispersed.
   </figurecaption>
@@ -80,7 +80,7 @@ As such, singular values would be bounded by ``\bar{\lambda} \equiv 1+\sigma\sqr
 
 ```@raw html
 <p align="center">
-<img src="/assets/marchenko-pastur.png" width="49%" class="center"/>
+<img src="/assets/drosophila/marchenko-pastur.png" width="49%" class="center"/>
 </p>
 <p align="center">
 Marchenko pastur distribution (orange) vs random matrix eigenvalues (blue)
@@ -101,8 +101,8 @@ This is exhibited empirically below.
 
 ```@raw html
 <p align="center">
-<img src="/assets/gaussian_svd.png" width="49%" class="center"/>
-<img src="/assets/gaussian_overlap.png" width="49%" class="center"/>
+<img src="/assets/drosophila/gaussian_svd.png" width="49%" class="center"/>
+<img src="/assets/drosophila/gaussian_overlap.png" width="49%" class="center"/>
 </p>
 ```
 
@@ -127,8 +127,8 @@ An example is shown below:
 
 ```@raw html
 <p align="center">
-<img src="/assets/poisson_svd.png" width="49%" class="center"/>
-<img src="/assets/poisson_overlap.png" width="49%" class="center"/>
+<img src="/assets/drosophila/poisson_svd.png" width="49%" class="center"/>
+<img src="/assets/drosophila/poisson_overlap.png" width="49%" class="center"/>
 </p>
 ```
 
@@ -201,8 +201,8 @@ The result is shown below.
 
 ```@raw html
 <p align="center">
-<img src="/assets/negbinom.png" width="49%" class="center"/>
-<img src="/assets/negbinom_mean.png" width="49%" class="center"/>
+<img src="/assets/drosophila/negbinom.png" width="49%" class="center"/>
+<img src="/assets/drosophila/negbinom_mean.png" width="49%" class="center"/>
 </p>
 ```
 As shown, we underestimate the true rank as a few components have singular values below the Marchenko-Pastur noise floor.
@@ -218,9 +218,9 @@ This can be seen in the below figure, which shows the scatter plot of the parame
 ```@raw html
 <p align="center">
 <figure>
-  <img src="/assets/nb_1_uncertainty_vs_expression.png" width="32%" />
-  <img src="/assets/nb_2_uncertainty_vs_expression.png" width="32%" />
-  <img src="/assets/nb_3_uncertainty_vs_expression.png" width="32%" />
+  <img src="/assets/drosophila/nb_1_uncertainty_vs_expression.png" width="32%" />
+  <img src="/assets/drosophila/nb_2_uncertainty_vs_expression.png" width="32%" />
+  <img src="/assets/drosophila/nb_3_uncertainty_vs_expression.png" width="32%" />
   <figurecaption>
   Each point is a gene (row). Color of point determined by mean expression of gene.
   </figurecaption>
@@ -240,8 +240,8 @@ The right figure displays the cumulative density function for the filtered genes
 ```@raw html
 <p align="center">
 <figure>
-  <img src="/assets/nb_total_uncertainty_vs_expression.png" width="49%" />
-  <img src="/assets/nb_badfits.png" width="49%" />
+  <img src="/assets/drosophila/nb_total_uncertainty_vs_expression.png" width="49%" />
+  <img src="/assets/drosophila/nb_badfits.png" width="49%" />
   <figurecaption>
   Filter genes with bad fits. Genes with high uncertainty are determined to be lowly expressed.
   </figurecaption>
@@ -255,8 +255,8 @@ This phenomenon persists across all gene expression levels.
 ```@raw html
 <p align="center">
 <figure>
-  <img src="/assets/nb_param2.png" width="49%" />
-  <img src="/assets/nb_param3.png" width="49%" />
+  <img src="/assets/drosophila/nb_param2.png" width="49%" />
+  <img src="/assets/drosophila/nb_param3.png" width="49%" />
   <figurecaption>
   Parameter distributions
   </figurecaption>
@@ -274,9 +274,9 @@ As shown below, we find great quantitative agreement between the empirical estim
 ```@raw html
 <p align="center">
 <figure>
-  <img src="/assets/bootstrap_1.png" width="60%" />
-  <img src="/assets/bootstrap_2.png" width="60%" />
-  <img src="/assets/bootstrap_3.png" width="60%" />
+  <img src="/assets/drosophila/bootstrap_1.png" width="60%" />
+  <img src="/assets/drosophila/bootstrap_2.png" width="60%" />
+  <img src="/assets/drosophila/bootstrap_3.png" width="60%" />
 </figure>
 </p>
 ```
@@ -288,8 +288,8 @@ As shown below, we find there are ``\sim 30`` **statistically significant** line
 Interestingly, while not fully delocalized as seen by the participation ratio of the "noise" components, we see that roughly ``\sim 1000`` genes contribute significantly to each component suggesting these are coarse "pathways" discovered.
 ```@raw html
 <p align="center">
-<img src="/assets/rank_estimate.png" width="49%" class="center"/>
-<img src="/assets/participation_ratio.png" width="49%" class="center"/>
+<img src="/assets/drosophila/rank_estimate.png" width="49%" class="center"/>
+<img src="/assets/drosophila/participation_ratio.png" width="49%" class="center"/>
 </p>
 ```
 To ensure element-wise positivity, the estimated ``\tilde{\mu}_{i\alpha}`` is obtained by performing non-negative matrix factorization on the rescaled ``\tilde{n}_{i\alpha}`` with rank ``35``.
@@ -311,7 +311,7 @@ This was determined to be an excellent stochastic model for the computed ``\tild
 
 ```@raw html
 <p align="center">
-<img src="/assets/gamma_qq.png" width="49%" class="center"/>
+<img src="/assets/drosophila/gamma_qq.png" width="49%" class="center"/>
 </p>
 ```
 

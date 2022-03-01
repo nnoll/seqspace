@@ -103,7 +103,7 @@ function heteroskedastic(raw)
 		fig[1,1],
 		xscale=Makie.log10,
 		xlabel="cell sequencing depth",
-        xticks=([10^4.0, 10^4.5, 10^5.0], [L"10^{4.0}", L"10^{4.5}", L"10^{5.0}"]),
+        # xticks=[10^4.0, 10^4.5, 10^5.0], [L"10^4", L"10^{4.5}", L"10^5"]),
 		ylabel="cumulative",
         yticks=([0, 0.25, 0.5, 0.75, 1.0], [L"0.0", L"0.25", L"0.50", L"0.75", L"1.00"])
 	)
@@ -492,6 +492,34 @@ function scaling(D, N; δ=2)
     save("$FIG/pointcloud_scaling.png", fig, px_per_unit=2)
 end
 
+function locality(Dg, Dx)
+    x = PointCloud.upper_tri(Dx)
+	g = PointCloud.upper_tri(Dg)
+	
+	bins = collect(range(50,350,length=10))
+
+	fig = Figure(font="Latin Modern Math", fontsize=26)
+	ax1 = Axis(fig[1,1],
+		xlabel="expression distance (AU)",
+		ylabel="cumulative",
+		yticks=([0, 0.25, 0.5, 0.75, 1.0], [L"0.0", L"0.25", L"0.50", L"0.75", L"1.00"])
+	)
+
+	color = cgrad(:matter, length(bins)-1, categorical=true)
+	for i in 1:length(bins)-1
+		lb, ub = bins[i:i+1]
+		x0 = (lb + ub) / 2
+
+		data = g[lb .≤ x .≤ ub]
+		lines!(ax1, sort(data), range(0,1,length(data)),
+            color=color[i],
+            linewidth=2,
+			label=@sprintf "%.2f μm" x0)
+	end
+	axislegend("est. physical distance", position = :rb)
+    save("$FIG/pointcloud_locality.png", fig, px_per_unit=2)
+end
+
 function inverse(mapping, database, residual; len=100)
     cmean   = zeros(len)
     cstd    = zeros(len)
@@ -501,8 +529,8 @@ function inverse(mapping, database, residual; len=100)
     for (i,β) in enumerate(βs)
         ψ = minimum(size(residual))*mapping.invert(β)
         ψ = ψ ./ sum(ψ,dims=1)
-        G = residual*ψ'
-        c = [cor(G[g,:] |> vec, database.expression.real[:,i] |> vec) for (i,g) in enumerate(mapping.index) if g !== nothing]
+
+        c = [cor( (ψ*(residual[g,:] |> vec)) , database.expression.real[:,i] |> vec) for (i,g) in enumerate(mapping.index) if g !== nothing]
 
         cmean[i]   = mean(c)
         cstd[i]    = std(c)
@@ -530,7 +558,7 @@ function inverse(mapping, database, residual; len=100)
     δ = 10
     colors = cgrad(:matter,length(entropy[1:δ:end]), categorical=true)
     for (i,S) in enumerate(entropy[1:δ:end])
-        lines!(ax1, sort(S), range(0,1,length(S));
+        lines!(ax1, sort(S)./1.25, range(0,1,length(S));
                linewidth=2,
                color=colors[i],
                label=@sprintf "%.2f" βs[δ*(i-1)+1])
@@ -760,22 +788,22 @@ function main(root::String; subdir=nothing)
     inverse, database = if isfile("$DATA/inverse.jld2")
         load("$DATA/inverse.jld2", "inverse", "database")
     else
-        ν, ω = if isfile("$DATA/bdntp_params.jld2")
-            # load("$DATA/bdntp_params.jld2", "nu", "omega")
+        ν, ω = if isfile("$DATA/bdtnp_params.jld2")
+            # load("$DATA/bdtnp_params.jld2", "ν", "ω")
             nothing, nothing
         else
             nothing, nothing
         end
         db = Inference.virtualembryo(directory="/home/nolln/mnt/data/drosophila/dvex");
-        I  = Inference.inversion(count./sum(count,dims=1), gene; refdb=db, ν=ν, ω=ω);
+        I  = Inference.inversion(norm./sum(norm,dims=1), gene; refdb=db, ν=ν, ω=ω);
         save("$DATA/inverse.jld2", Dict("inverse"=>I, "transform"=>I.invert(150), "database"=>db))
         I, db
     end
 
     Figures.scaling(D, 100)
-    Figures.inverse(inverse, database, Z)
+    Figures.inverse(inverse, database, norm./sum(norm,dims=1))
+    Figures.gene_patterns(inverse, database, gene, norm./sum(norm,dims=1))
     Figures.isomap(inverse, database, μ, Z, D)
-    Figures.gene_patterns(inverse, database, gene, count./sum(count,dims=1))
 
     ξ = PointCloud.isomap(Z,10;k=10)
     if !isfile("$DATA/isomap.jld2")
@@ -784,6 +812,11 @@ function main(root::String; subdir=nothing)
             "distance"=>D,
         ))
     end
+
+    ψ = inverse.invert(150)
+    ψ = ψ ./ sum(ψ,dims=1)
+    D = ψ'*PointCloud.geodesics(database.position',6)*ψ
+    Figures.locality(PointCloud.Distances.euclidean(ξ[:,1:5]'), D)
 end
 
 if abspath(PROGRAM_FILE) == @__FILE__

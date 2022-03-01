@@ -200,8 +200,8 @@ Compute the tangent vectors ``\\hat{\\bm{e}}_\\phi, \\hat{\\bm{e}}_x`` associate
 Assumes all points within `r` are distributed over the surface.
 Assumes `r` is sized ``N \\times 3``.
 """
-function basis(s::Surface, r)
-    x  = pullback(s, r)
+function basis(s::Surface, r; surface=false, normalized=true)
+    x  = surface ? r : pullback(s, r)
 
     # function
     x₀ = s.Λ[1].(x[:,1])
@@ -225,8 +225,10 @@ function basis(s::Surface, r)
               +(∂a.*cos.(ϕ).-a.*sin.(ϕ).*∂ϕ).*cos.(x[:,2]) .- (∂b.*sin.(ϕ).+b.*cos.(ϕ).*∂ϕ).*sin.(x[:,2]) .+ ∂x₀,
               +(∂a.*sin.(ϕ).+a.*cos.(ϕ).*∂ϕ).*cos.(x[:,2]) .+ (∂b.*cos.(ϕ).-b.*sin.(ϕ).*∂ϕ).*sin.(x[:,2]) .+ ∂y₀)
 
-    ez = ez ./ sqrt.(ez⋅ez)
-    eθ = eθ ./ sqrt.(eθ⋅eθ)
+    if normalized
+        ez = ez ./ sqrt.(ez⋅ez)
+        eθ = eθ ./ sqrt.(eθ⋅eθ)
+    end
 
     return ez, eθ
 end

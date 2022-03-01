@@ -28,7 +28,7 @@ The virtual embryo was constructed by aligning florescent pointcloud data obtain
 ```@raw html
 <p align="center">
 <figure>
-  <img src="/assets/bdtnp.jpg" width="99%" />
+  <img src="/assets/drosophila/bdtnp.jpg" width="99%" />
   <figurecaption>
   Cartoon of the procedure used to generate the virtual embryo by the BDTNP.
   </figurecaption>
@@ -121,8 +121,8 @@ The mapping at the optimal temperature corresponds to a sampling entropy ``\rho_
 ```@raw html
 <p align="center">
 <figure>
-  <img src="/assets/bdtnp_fit.png" width="49%" />
-  <img src="/assets/bdtnp_entropy.png" width="49%" />
+  <img src="/assets/drosophila/bdtnp_fit.png" width="49%" />
+  <img src="/assets/drosophila/bdtnp_entropy.png" width="49%" />
   <figurecaption>
   (Left)Residuals of scRNAseq expression patterns matches to BDTNP database.
   (Right) Entropy of sampling distribution, averaged over cells.
@@ -142,9 +142,9 @@ Below we display a representative sample.
 ```@raw html
 <p align="center">
 <figure>
-  <img src="/assets/gene/eve.png" width="32%" />
-  <img src="/assets/gene/ftz.png" width="32%" />
-  <img src="/assets/gene/twi.png" width="32%" />
+  <img src="/assets/drosophila/gene/eve.png" width="32%" />
+  <img src="/assets/drosophila/gene/ftz.png" width="32%" />
+  <img src="/assets/drosophila/gene/twi.png" width="32%" />
   <figurecaption>
   Genes shown (left-to-right): eve, ftz, twi
   </figurecaption>

@@ -389,7 +389,7 @@ function make_objective(ref, qry)
     function objective(Θ)
         # β, ν, ω = #0.5, Θ[1:84], Θ[85:end] #ones(84)
         # Σ, ϕ    = cost_scan(ref, qry, ν, ω)
-        β = 10
+        β = 250
         ν, ω = Θ[1:84], Θ[85:end]
         Σ, ϕ = cost_transform(ref, qry; ω=ω, ν=ν)
 

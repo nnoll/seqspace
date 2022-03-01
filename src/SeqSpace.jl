@@ -158,7 +158,7 @@ end
 Deserialize a trained autoencoder from binary format to semantic format.
 Represents model as a collection of functors.
 """
-function unmarshal(r::Result)
+function unmarshal(r)
     autoencoder = model(r.model.size, r.param.dₒ;
           Ws         = r.param.Ws,
           normalizes = r.param.BN,
@@ -187,7 +187,22 @@ function unmarshal(r::Result)
         end
     end
 
-    return Result(r.param, r.loss, autoencoder)
+    param = HyperParams(;
+        dₒ = r.param.dₒ,
+        Ws = r.param.Ws,
+        BN = r.param.BN,
+        DO = r.param.DO,
+        N  = r.param.N,
+        δ  = r.param.δ,
+        η  = r.param.η,
+        B  = r.param.B,
+        V  = r.param.V,
+        k  = r.param.k,
+        γₓ = r.param.γₓ,
+        γᵤ = r.param.γᵤ,
+    )
+
+    return Result(param, r.loss, autoencoder)
 end
 
 # ------------------------------------------------------------------------
@@ -266,6 +281,10 @@ function buildloss(model, D², param)
         Dz² = param.g(z)
         Dx² = D²[i,i]
 
+        dx, dz = PointCloud.upper_tri(Dx²), PointCloud.upper_tri(Dz²)
+        rx, rz = softrank(dx ./ mean(dx)), softrank(dz ./ mean(dz))
+        ϵₓ = 1 - cor(1 .- rx, 1 .- rz)
+        #=
         ϵₓ = mean(
             let
                 dx, dz = Dx²[:,j], Dz²[:,j]
@@ -273,6 +292,7 @@ function buildloss(model, D², param)
                 1 - cor((1 .- rx).^2, (1 .- rz).^2)
             end for j ∈ 1:size(Dx²,2)
         )
+        =#
 
         ϵᵤ = mean(
             let
@@ -280,6 +300,7 @@ function buildloss(model, D², param)
                 mean( ( (2*i/length(zₛ)-1) - s)^2 for (i,s) in enumerate(zₛ) )
             end for d ∈ 1:size(z,1)
         )
+ 
         #=
         ϵᵤ = let
             a = Voronoi.volumes(z)
