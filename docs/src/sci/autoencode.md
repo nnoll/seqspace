@@ -33,6 +33,11 @@ Instead, we estimate geodesic distances empirically, in analog to the Isomap alg
 [^1]: [A Global Geometric Framework for Nonlinear Dimensionality Reduction](https://www.science.org/doi/10.1126/science.290.5500.2319)
 
 #### Neighborhood graph construction
+The first task is to formulate an algorithm to approximate the metric space the point cloud is sampled from and subsequently utilize our estimate to compute all pairwise distances.
+We proceed guided by intuition gleaned from _Differential Geometry_: pairwise distances within local neighborhoods are expected to be well-described by a Euclidean metric in the tangent space.
+Conversely, macroscopic distances can only be computed via integration against the underlying metric along the corresponding geodesic.
+We denote ``D_{\alpha\beta}`` as the resultant pairwise distances between cell ``\alpha,\beta``.
+
 The basic construction of the neighborhood graph is demonstrated in the below cartoon.
 ```@raw html
 <p align="center">
@@ -50,7 +55,7 @@ Each pairwise neighborhood relationship is captured by an edge, weighted by the 
 The collection of all cells, and their neighborhood edges, constitute the _neighborhood graph_.
 
 Given a neighborhood graph as defined above, computing the "geodesic" distance between cells reduces to finding the shortest path between all pairs of points.
-This can be solved using either the Floyd-Warshall algorithm in ``\mathcal{O}(N^3)`` time [^2] or iteratively using Dijikstra's algorithm in ``\mathcal{O}(N(N\logN + E))`` time [^3].
+This can be solved using either the Floyd-Warshall algorithm in ``\mathcal{O}(N^3)`` time [^2] or iteratively using Dijikstra's algorithm in ``\mathcal{O}(N(N\log N + E))`` time [^3].
 We chose the later due to the sparsity of the neighborhood graph.
 The estimation of geodesic distances, if performed as described, asymptotically approaches the true value as the density of points increases [^4].
 
@@ -89,7 +94,7 @@ We provide additional evidence in support of our underlying hypothesis by utiliz
 As such, we simply perform a Principal Coordinates Analysis on the geodesic distances estimated in [Neighborhood graph construction](@ref).
 This is tantamount to finding a set of low-dimensional coordinates ``\xi_\alpha`` that minimize the strain between their Euclidean embedding and the given distance matrix ``D_{\alpha\beta}``.
 ```math
-    E(\{\xi_\alpha\}) = \left(\frac{\left(\sum_{\alpha,beta} D_{\alpha\beta} - |\xi_\alpha - \xi_\beta|^2\right)^2}{\sum_{\alpha,\beta} D_{\alpha\beta}^2 }\right)^{1/2}
+    E(\{\xi_\alpha\}) = \left(\frac{\left(\sum_{\alpha,\beta} D_{\alpha\beta} - |\xi_\alpha - \xi_\beta|^2\right)^2}{\sum_{\alpha,\beta} D_{\alpha\beta}^2 }\right)^{1/2}
 ```
 ```@raw html
 <p align="center">
@@ -109,24 +114,34 @@ By varying the dimensionality of the Isomap embedding, we see that three dimensi
 </p>
 ```
 
-## Nonlinear manifold learning
+## De-novo manifold learning
 
-Want:
-* Dimensional reduction
-* Nonlinear
-* Differentiable
-* Generalizable
-* Unsupervised
+All considerations taken together, we wish to formulate an unsupervised method for nonlinear, dimensional reduction.
+The natural choice for network architecture is thus an autoencoder [^5], shown graphically below.
+```@raw html
+<p align="center">
+<img src="/assets/autoencode/auto_encoder.svg" width="68%" class="center"/>
+</p>
+```
+However, in order to enforce the _continuum expression ansatz_, the neural network should also _explicitly_ conserve the topology of our neighborhood graph; neighborhood rankings should be preserved under the identified mapping.
+Lastly, we constrain the learned latent representation to be uniformally sampled.
+This can be viewed as an additional assumption on top of our _continuum expression ansatz_.
+Specifically, we assume cells were sampled from the embryonic positions _uniformally_, i.e. without bias, and, as such, restrict our view to uniformally sampled parameterizations of the underlying expression manifold.
 
-Natural choice for an autoencoder.
-Utilize known positional labels as a validation step.
-Not used for training purposes.
+[^5]: [Modular learning in neural networks](https://www.aaai.org/Library/AAAI/1987/aaai87-050.php)
 
 ### Network architecture
 
-How to pick depth? Width?
-Worry about overfitting: enter dropout and batch normalization.
-Vanilla autoencoder: latent space is not readily interpretable.
+The input to the neural network was the `35` **statistically significant** components determined in [Drosophila results](@ref).
+The encoder layer was designed to be 100 neurons wide and 6 levels deep with dense connections between each layer.
+In order to prevent overfitting and accelerate training of deep layers, batch normalization was utilized between each latent layer [^6].
+Linear and exponential linear unit activation functions were chosen for the input/output and latent layers respectively.
+The decoder layer was taken to be mirror symmetric with respect to the encoding layer for simplicity.
+Training occurred on ``80\%`` of the data, batched into groups of ``128`` cells.
+Validation of the resultant network was performed on the remaining ``20\%`` to ensure parameters were not overfit.
+We note that the final results presented here were determined to not be highly sensitive to the specific architectural details outlined here.
+
+[^6]: [Batch Normalization: Accelerating Deep Network Training by Reducing Internal Covariate Shift](https://arxiv.org/abs/1502.03167).
 
 ### Topological conservation
 In order to learn an interpretable latent space representation of the intrinsic gene expression manifold, we wish to constrain the estimated pullback to conserve the topology of the input scRNAseq data.
@@ -140,25 +155,15 @@ It is important to note that this assumes our original scRNAseq data is sampled 
 We note that there have been recent promising attempts at designing loss functions parameterized by explicit topological invariants formulated by _Topological Data Analysis_, e.g. persistent homology.
 Lastly, one could envision having each network layer operate on a simplicial complex, rather than a flat vector of real numbers, however it is unclear how to parameterize the feed-forward function.
 
-Thus the first task is to formulate an algorithm to approximate the metric space the point cloud is sampled from and subsequently utilize our estimate to compute all pairwise distances.
-Again we proceed guided by intuition gleaned from _Differential Geometry_: pairwise distances within local neighborhoods are expected to be well-described by a Euclidean metric in the tangent space.
-Conversely, macroscopic distances can only be computed via integration against the underlying metric along the corresponding geodesic.
-As such, we first estimate the local tangent space of our input data by computing pairwise distances within local neighborhoods around each point, either defined by a fixed radius or fixed number of neighbors.
-This defines a sparse, undirected graph in which edges only exist within our estimated tangent spaces and are weighted by the euclidean distance within the embedded space.
-The resultant neighborhood graph serves as the basis for many dimensional reduction algorithms, such as **Isomap**, **UMAP** and **tSNE**.
-Pairwise distances between _any_ two points in the original dataset can then be found by simple graph traversal to find the shortest possible path between two graph vertices, the discrete analog of a continuum geodesic.
-It has been shown that the distance estimated by this algorithm asymptotically approaches the true distance as the number of data points sampled increases.
-We denote ``D_{\alpha\beta}`` as the resultant pairwise distances between cell ``\alpha,\beta``.
-
 #### Isometric formulation
 The most straightforward manner to preserve distances between the input data and the latent representation is to impose isometry, i.e. distances in both spaces quantitatively agree.
-This would be achieved by supplementing the objective function with the term
+This would be achieved by supplementing the objective function with an _Isomap_ analog
 ```math
-E_{iso} = \displaystyle\sum\limits_{\alpha,\beta} \left(D_{\alpha\beta} - \left|\left| \xi_\alpha - \xi_\beta \right|\right| \right)^2
+E_{iso} \sim \displaystyle\sum\limits_{\alpha,\beta} \left(D_{\alpha\beta} - \left|\left| \xi_\alpha - \xi_\beta \right|\right| \right)^2
 ```
 Utilizing this term is problematic for several reasons:
 1. Large distances dominate the energetics and as such large-scale features of the intrinsic manifold will be preferentially fit.
-2. Generically, ``d`` dimensional manifolds can not be isometrically embedded into ``\mathbb{R}^d``, e.g. the sphere into the plane.
+2. Generically, ``d`` dimensional manifolds can not be isometrically embedded into ``\mathbb{R}^d``, e.g. the sphere into the plane. This is seen empirically by the empirical three dimensional scaling but long tail of dimensions seen in the isomap correlation.
 3. It trusts the computed distances quantitatively. We simply want close cells to be close in the resultant latent space.
 
 #### Monometric formulation
@@ -179,9 +184,9 @@ We wish to devise an objective function that contains functions of the rank of s
 However, ``R(\bm{\psi})`` is a non-differentiable function; it maps a vector in ``\mathbb{R}^n`` to a permutation of ``n`` items.
 Hence, we can not directly utilize the rank in a loss function as there is no way to backpropagate gradient information to the network parameters.
 In order to rectify this limitation, we first reformulate the ranking problem as a linear programming problem that permits efficient regularization.
-Note, the presentation here follows closely the original paper [^5]
+Note, the presentation here follows closely the original paper [^7]
 
-[^5]: [Fast Differentiable Sorting and Ranking](https://arxiv.org/abs/2002.08871)
+[^7]: [Fast Differentiable Sorting and Ranking](https://arxiv.org/abs/2002.08871)
 
 ##### Linear program formulation
 
@@ -229,7 +234,7 @@ Note that the limit ``\epsilon \rightarrow 0`` reproduces the linear programming
 Conversely, in the limit ``\epsilon \rightarrow \infty``, the solution will go to a constant vector that has the smallest modulus on the _permutahedron_.
 
 ##### Solution
-It has been demonstrated before that the above problem reduces to simple isotonic regression[^5][^6].
+It has been demonstrated before that the above problem reduces to simple isotonic regression[^7][^8].
 Specifically,
 ```math
 R\left(\bm{\psi}\right) = -\frac{\bm{\psi}}{\epsilon} -
@@ -249,15 +254,109 @@ Furthermore, the solution admits a simple, calculatable Jacobian
     \bm{0}   & \bm{0} & \bm{B}_m \\
     \end{pmatrix}_{\alpha\beta}
 ```
-where ``\bm{B}_i`` denotes the matrix corresponding to the `i^{th}` block obtained during isotonic regression.
+where ``\bm{B}_i`` denotes the matrix corresponding to the ``i^{th}`` block obtained during isotonic regression.
 It is a constant matrix whose number of rows and columns equals the size of the block, and whose values all sum to 1.
+The Julia implementation can be found in the [Differentiable rank](@ref) section.
 
-[^6]: [SparseMAP: Differentiable Sparse Structured Inference](https://arxiv.org/abs/1802.04223)
+[^8]: [SparseMAP: Differentiable Sparse Structured Inference](https://arxiv.org/abs/1802.04223)
 
 #### Loss function
+The term of the loss function enforcing monometricity is thus taken to be
+```math
+    E_{x} \equiv \frac{\sum\limits_{\alpha\beta} \left(R\left(D_{\alpha\beta}^2\right) - R\left(|\vec{\psi}_{\alpha}-\vec{\psi}_{\beta}|^2\right)\right)^2}{\sqrt{\sum\limits_{\alpha\beta}R^2\left(D_{\alpha\beta}^2\right)\sum\limits_{\alpha\beta} R^2\left(|\vec{\psi}_{\alpha}-\vec{\psi}_{\beta}|^2\right)}}
+```
 
 ### Uniform sampling of latent space
+In order to learn an interpretable latent space representation of the intrinsic gene expression manifold, we also wish to constrain the estimated pullback to uniformally sample the latent space.
+When posed in the language of Optimal Transport, this is equivalent to a semi-discrete formulation of the Wasserstein distance, in which the point cloud in ``d`` dimensions is mapped optimally to ``[0,1]^d``.
+It can be shown [^9] that this is equivalent to integrating the moment of inertia over the equal area power diagram in ``d`` dimensions, a computationally intensive procedure as the latent dimension grows.
+
+We seek a balance between analytical correctness and computational tractability.
+To this end, we forgo imposing that the full d-dimensional joint distribution is uniform; instead we impose that the one-dimensional marginals over each independent latent dimension is uniform.
+For one-dimensional distributions, the Wasserstein metric has a unique analytical expression in terms of the empirical cumulative density function ``F(x)`` and thus can be computed in linear time [^10].
+As such, the term in the loss function enforcing latent uniformity is taken to be
+```math
+    E_u \equiv \frac{1}{d}\displaystyle\sum\limits_d \frac{1}{N} \displaystyle\sum\limits_{\alpha} \left| F\left(\Phi^{-1}\left(\vec{z}_{\alpha}\right)_d\right) - R\left(\Phi^{-1}\left(\vec{z}_{\alpha}\right)_d\right)\right|
+```
+
+[^9]: [Optimal Transport for Applied Mathematicians](https://link.springer.com/book/10.1007/978-3-319-20828-2)
+[^10]: [Calculation of the Wasserstein Distance Between Probability Distributions on the Line](https://epubs.siam.org/doi/10.1137/1118101)
+
+### Network objective function
+Putting all terms together, we arrive at our final formulation of the loss function (where ``\Phi`` and ``\Phi^{-1}`` denote the decoder and encoder stages respectively).
+```math
+E \equiv \frac{\displaystyle\sum\limits_{\alpha} \left|\vec{z}_{\alpha} - \Phi\left(\Phi^{-1}\left(\vec{z}_\alpha\right)\right) \right|^2}{\displaystyle\sum\limits_{\alpha} |\vec{z}_{\alpha}|^2} + \lambda_x E_{x} + \lambda_u E_{u}
+```
+Stated plainly, all three terms, in left-to-right order, seek to find a low-dimensional map that is (i) invertible, (ii) preserves topological neighborhood relationships, (iii) is uniformally sampled by our dataset.
+For all results shown below, we chose ``\lambda_x=\lambda_u=1`` for simplicity; exploration of hyperparameter optimization would be an interesting future direction.
 
 ### Swiss roll validation
 
-## Results
+Before continuing with analysis of the _Drosophila melongaster_ analysis, we first verify our proposed novel manifold learning technique on a canonical surface, the two dimensional swiss roll, shown below.
+```@raw html
+<p align="center">
+<img src="/assets/swissroll/inputdata.png" width="48%" class="center"/>
+<img src="/assets/swissroll/loss.png" width="48%" class="center"/>
+</p>
+```
+Specifically, we generated a 2D swiss roll, embedded in ``30`` dimensions, with ``1\%`` random Gaussian noise added to each component.
+The neural network, as specified in [Network objective function](@ref), was minimized until convergence (shown above).
+The resultant 2D latent space, the output of the encoding stage, is shown below after a simple affine transformation to align the ``\phi`` axis along the horizontal axis.
+Importantly, the uniformization constraint results in an approximately _linear_ relationship between the known latent variables used to generate the 2D surface, and the latent parameterization variables.
+
+```@raw html
+<p align="center">
+<img src="/assets/swissroll/latent.png" width="48%" class="center"/>
+<img src="/assets/swissroll/latent_correlation.png" width="48%" class="center"/>
+</p>
+```
+
+Critically, the output of the decoder stage correlates with the input data such that ``R^2 \sim .98``.
+This held true for 10 independent trained networks with no observed large-scale non-linearity left in the latent space.
+We conclude that our construction accurately recapitulates the 2D intrinsic parameterization of the toy data.
+
+## Drosophila manifold
+
+We now show the results of the minimization of the energy specified in [Network objective function](@ref) using the architecture outlined in [Network architecture](@ref), with three latent dimensions.
+Below, we show a scatter plot of all scRNAseq cells transformed to the learned latent representation.
+The left and right plots are colored according to the estimated AP and DV positions respectively, as obtained by [scRNAseq spatial inference](@ref).
+We emphasize here that we _did not_ train on the spatial positions, but rather the continuity of space directly follows from imposing the continuity of gene expression in the latent space.
+Additionally, we did not constrain AP and DV axes, shown as red and green arrows in the triad, to be orthogonal.
+Rather, we simply looked for the directions in the latent space that _maximally correlate_ with our estimated position.
+The resultant two directions have negligible overlap.
+The input data and the output of the decoder stage correlate such that ``R^2 \sim .68``, implying we can capture roughly ``\sim 70 \%`` of the variance observed in normalized gene expression with just _three_ latent dimensions.
+
+```@raw html
+<p align="center">
+<img src="/assets/autoencode/AP_colormap.png" width="48%" class="center"/>
+<img src="/assets/autoencode/DV_colormap.png" width="48%" class="center"/>
+</p>
+```
+We observe good _linear_ agreement with our estimated AP/DV directions in the latent space and the estimated spatial position for each cell, as shown above.
+Our ability to resolve AP position is limited to a precision of roughly ``.08``mm, much larger than the cellular resolution obtained utilizing FISH data of the 4 gap genes [^11].
+The causal driver behind this is likely multifaceted: (i) scRNAseq is fundamentally noisy (ii) we have a relatively small sized dataset, (iii) our estimates of embryonic position themselves are noisy values.
+It would be interesting to revisit this analysis leveraging a higher sequencing depth per cell allowable with modern scRNAseq techniques or utilizing novel spatial-omics to provide more exact positional values.
+Interestingly, our estimated DV axis appears to be qualitatively nonlinear with strongest predictive power at the poles and weak relationship in the bulk.
+
+The benefit of using an autoencoder network is that its is both generalizable and generative: we ultimately have a function that maps scRNAseq to a latent space and back out to the original expression domain.
+For example, we can "generate" novel scRNAseq data from our interpolated model by sampling points in the latent space and transforming the points through the decoder stage.
+More importantly, this allows us to directly leverage tools from vector calculus to estimate volumes of phase space.
+As shown in the below right figure, we observe both the anterior and posterior poles contain more "volume" of the gene expression manifold for a unit volume of physical space when compared to cells sampled from the lateral region.
+Assuming a constant density of states over the intrinsic gene expression manifold, this implies a higher density of cell fates at the head and tail of the embryo than the lateral ectoderm.
+This is in contrast to previous analyses done on the AP pattern of the 4 gap genes over the mid-sadigittal plane of the embryo which predicted a constant positional information [^11].
+We note that this is an interesting direction for future study.
+
+[^11]: [Positional information, in bits](https://www.pnas.org/doi/10.1073/pnas.1315642110)
+
+```@raw html
+<p align="center">
+<img src="/assets/autoencode/coordinate_scatter.png" width="48%" class="center"/>
+<img src="/assets/autoencode/positional_info.png" width="48%" class="center"/>
+</p>
+```
+
+An interesting question to consider for future studies: what is the third latent dimension we discover within the scRNAseq data?
+We analyzed the genes that maximally correlate (negatively or positively) with this direction in the latent space, as shown by the blue arrow above.
+The below table captures some examples of the top hits for both signs.
+Theses genes are putatively ubiquitously expressed, consistent with the notion that this is an orthogonal axis to the directions of spatial variation.
+We postulate this direction is involved in the cell cycle as _RNApolymerase_, _myosin light chain_, and other mitotic markers form on "pole" of the axis, while _ed_ and other negative growth regulators are enriched on the conjugate pole.

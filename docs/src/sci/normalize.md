@@ -1,4 +1,4 @@
-# scRNAseq Normalization
+# scRNAseq normalization
 
 ## Introduction
 
