@@ -1,2 +1,2 @@
 site:
-	rsync -r ../build/ .
+	rsync -rk ../build/ .
