@@ -1,4 +1,4 @@
-# scRNAseq Spatial Inference
+# scRNAseq spatial inference
 
 ## Introduction
 
