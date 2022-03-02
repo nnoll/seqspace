@@ -1,5 +1,7 @@
 site:
 	rsync -rk ../build/ .
-	sed -i 's|assets/|seqspace/assets/|g' sci/autoencode/index.html
-	sed -i 's|assets/|seqspace/assets/|g' sci/inference/index.html
-	sed -i 's|assets/|seqspace/assets/|g' sci/normalize/index.html
+	for path in autoencode inference normalize; do \
+		sed -i 's|assets/drosophila|seqspace/assets/drosophila|g' sci/$$path/index.html; \
+		sed -i 's|assets/autoencode|seqspace/assets/autoencode|g' sci/$$path/index.html; \
+		sed -i 's|assets/swissroll|seqspace/assets/swissroll|g'   sci/$$path/index.html; \
+	done
