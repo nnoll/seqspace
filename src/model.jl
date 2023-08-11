@@ -144,8 +144,8 @@ function update_dimension(model, dₒ; ϵ = 1e-6)
     lᵢ = F[end]
     lₒ = F¯¹[1]
 
-    Wᵢ, bᵢ = params(lᵢ)
-    Wₒ, bₒ = params(lₒ)
+    Wᵢ, bᵢ = Flux.params(lᵢ)
+    Wₒ, bₒ = Flux.params(lₒ)
 
     size(Wᵢ,1) == dₒ && return nothing
     size(Wᵢ,1) >  dₒ && error("can not reduce dimensionality of model") 
@@ -221,7 +221,7 @@ Optional parameters include:
   3. `η` denotes the learning rate.
 """
 function train!(model, data, index, loss; B=64, η=1e-3, N=100, log=noop)
-    Θ   = params(model.identity)
+    Θ   = Flux.params(model.identity)
     opt = ADAM(η)
 
     for n ∈ 1:N
