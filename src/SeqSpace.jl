@@ -347,7 +347,7 @@ function linearprojection(x, d; Δ=1, Λ=nothing)
 end
 
 """
-    fitmodel(data, param; D²=nothing, chatty=true)
+    fitmodel(data, param; D²=nothing, chatty=true, bounded=false)
 
 Train an autoencoder model, specified with `param` hyperparams, to fit `data`.
 `data` is assumed to be sized ``d \times N`` where ``d`` and ``N`` are dimensionality and cardinality respectively.
@@ -355,13 +355,15 @@ If not nothing, `D²` is assumed to be a precomputed distance matrix of point cl
 If `chatty` is true, function will print to `stdout`.
 Returns a `Result` type.
 """
-function fitmodel(data, param; D²=nothing, chatty=true)
+function fitmodel(data, param; D²=nothing, chatty=true, bounded=false)
     D² = isnothing(D²) ? geodesics(data, param.k).^2 : D²
 
+    latent_activation = bounded ? tanh_fast : elu
     M = model(size(data,1), param.dₒ;
           Ws         = param.Ws,
           normalizes = param.BN,
-          dropouts   = param.DO
+          dropouts   = param.DO,
+          σ = latent_activation
     )
 
     nvalid = size(data,2) - ((size(data,2)÷param.B)-param.V)*param.B
@@ -394,7 +396,7 @@ function fitmodel(data, param; D²=nothing, chatty=true)
     )
     Flux.trainmode!(M.identity, false)
 
-    return Result(param, E, M), (batch=batch, index=index, D²=D², log=log)
+    return Result(param, E, M), (batch=batch, index=index, D²=D², log=log, activation=latent_activation)
 end
 
 """
