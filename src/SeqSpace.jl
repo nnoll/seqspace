@@ -262,57 +262,79 @@ function cor(x, y)
 end
 
 """
-    buildloss(model, D², param)
+    buildloss(model, D², param, voronoi_uniformization=false)
 
 Return a loss function used to train a neural network `model` according to input hyperparameters `param`.
 `model` is a object with three fields, `pullback`, `pushforward`, and `identity`.
 `pullback` and `pushforward` refers to the encoder and decoder layers respectively, while the identity is the composition.
 `D²` is a matrix of pairwise distances that will be used as a quenched hyperparameter in the distance soft rank loss.
 """
-function buildloss(model, D², param)
-    return function(x, i::T, output::Bool) where T <: AbstractArray{Int,1}
-        z = model.pullback(x)
-        y = model.pushforward(z)
+function buildloss(model, D², param; voronoi_uniformiation=false)
+    # TODO(nnoll): condense this by making seperate functions. right now very copied pasted...
+    if voronoi_uniformization
+        return function(x, i::T, output::Bool) where T <: AbstractArray{Int,1}
+            z = model.pullback(x)
+            y = model.pushforward(z)
 
-        # reconstruction loss
-        ϵᵣ = sum(sum((x.-y).^2, dims=2)) / sum(sum(x.^2,dims=2))
+            # reconstruction loss
+            ϵᵣ = sum(sum((x.-y).^2, dims=2)) / sum(sum(x.^2,dims=2))
 
-        # distance softranks
-        Dz² = param.g(z)
-        Dx² = D²[i,i]
+            # distance softranks
+            Dz² = param.g(z)
+            Dx² = D²[i,i]
 
-        dx, dz = PointCloud.upper_tri(Dx²), PointCloud.upper_tri(Dz²)
-        rx, rz = softrank(dx ./ mean(dx)), softrank(dz ./ mean(dz))
-        ϵₓ = 1 - cor(1 .- rx, 1 .- rz)
-        #=
-        ϵₓ = mean(
-            let
-                dx, dz = Dx²[:,j], Dz²[:,j]
-                rx, rz = softrank(dx ./ mean(dx)), softrank(dz ./ mean(dz))
-                1 - cor((1 .- rx).^2, (1 .- rz).^2)
-            end for j ∈ 1:size(Dx²,2)
-        )
-        =#
+            dx, dz = PointCloud.upper_tri(Dx²), PointCloud.upper_tri(Dz²)
+            rx, rz = softrank(dx ./ mean(dx)), softrank(dz ./ mean(dz))
+            ϵₓ = 1 - cor(1 .- rx, 1 .- rz)
+            #=
+            ϵₓ = mean(
+                let
+                    dx, dz = Dx²[:,j], Dz²[:,j]
+                    rx, rz = softrank(dx ./ mean(dx)), softrank(dz ./ mean(dz))
+                    1 - cor((1 .- rx).^2, (1 .- rz).^2)
+                end for j ∈ 1:size(Dx²,2)
+            )
+            =#
+            ϵᵤ = let
+                a = Voronoi.volumes(z)
+                std(a) / mean(a)
+            end
 
-        ϵᵤ = mean(
-            let
-                zₛ = sort(z[d,:])
-                mean( ( (2*i/length(zₛ)-1) - s)^2 for (i,s) in enumerate(zₛ) )
-            end for d ∈ 1:size(z,1)
-        )
- 
-        #=
-        ϵᵤ = let
-            a = Voronoi.volumes(z)
-            std(a) / mean(a)
+            if output
+                println(stderr, "ϵᵣ=$(ϵᵣ), ϵₓ=$(ϵₓ), ϵᵤ=$(ϵᵤ)")
+            end
+
+            return ϵᵣ + param.γₓ*ϵₓ + param.γᵤ*ϵᵤ
         end
-        =#
+    else
+        return function(x, i::T, output::Bool) where T <: AbstractArray{Int,1}
+            z = model.pullback(x)
+            y = model.pushforward(z)
 
-        if output
-            println(stderr, "ϵᵣ=$(ϵᵣ), ϵₓ=$(ϵₓ), ϵᵤ=$(ϵᵤ)")
+            # reconstruction loss
+            ϵᵣ = sum(sum((x.-y).^2, dims=2)) / sum(sum(x.^2,dims=2))
+
+            # distance softranks
+            Dz² = param.g(z)
+            Dx² = D²[i,i]
+
+            dx, dz = PointCloud.upper_tri(Dx²), PointCloud.upper_tri(Dz²)
+            rx, rz = softrank(dx ./ mean(dx)), softrank(dz ./ mean(dz))
+            ϵₓ = 1 - cor(1 .- rx, 1 .- rz)
+
+            ϵᵤ = mean(
+                let
+                    zₛ = sort(z[d,:])
+                    mean( ( (2*i/length(zₛ)-1) - s)^2 for (i,s) in enumerate(zₛ) )
+                end for d ∈ 1:size(z,1)
+            )
+
+            if output
+                println(stderr, "ϵᵣ=$(ϵᵣ), ϵₓ=$(ϵₓ), ϵᵤ=$(ϵᵤ)")
+            end
+
+            return ϵᵣ + param.γₓ*ϵₓ + param.γᵤ*ϵᵤ
         end
-
-        return ϵᵣ + param.γₓ*ϵₓ + param.γᵤ*ϵᵤ
     end
 end
 
@@ -347,7 +369,7 @@ function linearprojection(x, d; Δ=1, Λ=nothing)
 end
 
 """
-    fitmodel(data, param; D²=nothing, chatty=true, bounded=false)
+    fitmodel(data, param; D²=nothing, chatty=true, interior_activation=elu, exterior_activation=tanh_fast)
 
 Train an autoencoder model, specified with `param` hyperparams, to fit `data`.
 `data` is assumed to be sized ``d \times N`` where ``d`` and ``N`` are dimensionality and cardinality respectively.
@@ -355,24 +377,32 @@ If not nothing, `D²` is assumed to be a precomputed distance matrix of point cl
 If `chatty` is true, function will print to `stdout`.
 Returns a `Result` type.
 """
-function fitmodel(data, param; D²=nothing, chatty=true, bounded=false)
+function fitmodel(
+    data,
+    param;
+    D²=nothing,
+    chatty=true,
+    interior_activation=celu,
+    exterior_activation=tanh_fast,
+    voronoi_uniformization=true,
+)
     D² = isnothing(D²) ? geodesics(data, param.k).^2 : D²
 
-    latent_activation = bounded ? tanh_fast : elu
     M = model(size(data,1), param.dₒ;
           Ws         = param.Ws,
           normalizes = param.BN,
           dropouts   = param.DO,
-          σ = latent_activation
+          interior_activation = interior_activation,
+          exterior_activation = exterior_activation,
     )
 
     nvalid = size(data,2) - ((size(data,2)÷param.B)-param.V)*param.B
     batch, index = validate(data, nvalid)
 
-    loss = buildloss(M, D², param)
+    loss = buildloss(M, D², param, voronoi_uniformization=voronoi_uniformization)
     E    = (
         train = Float64[],
-        valid = Float64[]
+        valid = Float64[],
     )
 
     progress = Progress(param.N; desc=">training model", output=stderr)
@@ -396,7 +426,14 @@ function fitmodel(data, param; D²=nothing, chatty=true, bounded=false)
     )
     Flux.trainmode!(M.identity, false)
 
-    return Result(param, E, M), (batch=batch, index=index, D²=D², log=log, activation=latent_activation)
+    return Result(param, E, M), (
+        batch=batch,
+        index=index,
+        D²=D²,
+        log=log,
+        interior_activation=interior_activation,
+        exterior_activation=exterior_activation
+    )
 end
 
 """
