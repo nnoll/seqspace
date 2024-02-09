@@ -119,8 +119,8 @@ function model(dᵢ, dₒ; Ws=Int[], normalizes=Int[], dropouts=Int[], interior_
                 Set(dropouts),
                 Set(normalizes),
                 σ₀,
-                interior_activation,
                 exterior_activation,
+                interior_activation,
              )
 
     F   = Chain(layers...)
