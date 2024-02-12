@@ -269,7 +269,7 @@ Return a loss function used to train a neural network `model` according to input
 `pullback` and `pushforward` refers to the encoder and decoder layers respectively, while the identity is the composition.
 `D²` is a matrix of pairwise distances that will be used as a quenched hyperparameter in the distance soft rank loss.
 """
-function buildloss(model, D², param; voronoi_uniformiation=false)
+function buildloss(model, D², param; voronoi_uniformization=false)
     # TODO(nnoll): condense this by making seperate functions. right now very copied pasted...
     if voronoi_uniformization
         return function(x, i::T, output::Bool) where T <: AbstractArray{Int,1}
