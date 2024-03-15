@@ -2,7 +2,6 @@ module DifferentialGeometry
 
 using Match
 using LinearAlgebra, Polynomials, Statistics
-using MiniQhull
 
 include("io.jl")
 using .DataIO: read_obj, read_ply

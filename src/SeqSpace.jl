@@ -286,18 +286,11 @@ function buildloss(model, D², param; voronoi_uniformization=false)
             dx, dz = PointCloud.upper_tri(Dx²), PointCloud.upper_tri(Dz²)
             rx, rz = softrank(dx ./ mean(dx)), softrank(dz ./ mean(dz))
             ϵₓ = 1 - cor(1 .- rx, 1 .- rz)
-            #=
-            ϵₓ = mean(
-                let
-                    dx, dz = Dx²[:,j], Dz²[:,j]
-                    rx, rz = softrank(dx ./ mean(dx)), softrank(dz ./ mean(dz))
-                    1 - cor((1 .- rx).^2, (1 .- rz).^2)
-                end for j ∈ 1:size(Dx²,2)
-            )
-            =#
             ϵᵤ = let
+                a₀ = 4 / length(z)
                 a = Voronoi.volumes(z)
-                std(a) / mean(a)
+
+                mean((a./a₀ .- 1).^2)
             end
 
             if output
@@ -387,6 +380,9 @@ function fitmodel(
     voronoi_uniformization=true,
 )
     D² = isnothing(D²) ? geodesics(data, param.k).^2 : D²
+    if chatty
+        println(stderr, "done computing geodesics...")
+    end
 
     M = model(size(data,1), param.dₒ;
           Ws         = param.Ws,
