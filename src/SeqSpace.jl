@@ -283,14 +283,26 @@ function buildloss(model, D², param; voronoi_uniformization=false)
             Dz² = param.g(z)
             Dx² = D²[i,i]
 
-            dx, dz = PointCloud.upper_tri(Dx²), PointCloud.upper_tri(Dz²)
-            rx, rz = softrank(dx ./ mean(dx)), softrank(dz ./ mean(dz))
-            ϵₓ = 1 - cor(1 .- rx, 1 .- rz)
-            ϵᵤ = let
-                a₀ = 4 / length(z)
-                a = Voronoi.volumes(z)
+            # dx, dz = PointCloud.upper_tri(Dx²), PointCloud.upper_tri(Dz²)
+            # rx, rz = [ softrank(col ./ mean(col)) for col in eachcol(Dx²) ], softrank(dz ./ mean(dz))
+            # ϵₓ = 1 - mean( [ cor(softrank(cx ./ mean(cx)), softank(cz ./ mean(cz)) ) for (cx, cz) in zip(eachcol(Dx², Dy²))] )
+            ϵₓ = 1 - mean( [
+                cor(
+                    softrank(cx ./ mean(cx)).^5,
+                    softrank(cz ./ mean(cz)).^5,
+                )
+                for (cx, cz) in zip(eachcol(Dx²), eachcol(Dz²))
+            ] )
 
-                mean((a./a₀ .- 1).^2)
+            if param.γᵤ > 0
+                ϵᵤ = let
+                    a₀ = 4 / length(z)
+                    a = Voronoi.volumes(z)
+
+                    mean((a./a₀ .- 1).^2)
+                end
+            else
+                ϵᵤ = 0
             end
 
             if output
@@ -311,16 +323,27 @@ function buildloss(model, D², param; voronoi_uniformization=false)
             Dz² = param.g(z)
             Dx² = D²[i,i]
 
-            dx, dz = PointCloud.upper_tri(Dx²), PointCloud.upper_tri(Dz²)
-            rx, rz = softrank(dx ./ mean(dx)), softrank(dz ./ mean(dz))
-            ϵₓ = 1 - cor(1 .- rx, 1 .- rz)
+            # dx, dz = PointCloud.upper_tri(Dx²), PointCloud.upper_tri(Dz²)
+            # rx, rz = softrank(dx ./ mean(dx)), softrank(dz ./ mean(dz))
+            # ϵₓ = 1 - cor(1 .- rx, 1 .- rz)
+            ϵₓ = 1 - mean( [
+                cor(
+                    softrank(cx ./ mean(cx)).^3,
+                    softrank(cz ./ mean(cz)).^3
+                )
+                for (cx, cz) in zip(eachcol(Dx²), eachcol(Dz²))
+            ] )
 
-            ϵᵤ = mean(
-                let
-                    zₛ = sort(z[d,:])
-                    mean( ( (2*i/length(zₛ)-1) - s)^2 for (i,s) in enumerate(zₛ) )
-                end for d ∈ 1:size(z,1)
-            )
+            if param.γᵤ > 0
+                ϵᵤ = mean(
+                    let
+                        zₛ = sort(z[d,:])
+                        mean( ( (2*i/length(zₛ)-1) - s)^2 for (i,s) in enumerate(zₛ) )
+                    end for d ∈ 1:size(z,1)
+                )
+            else
+                ϵᵤ = 0
+            end
 
             if output
                 println(stderr, "ϵᵣ=$(ϵᵣ), ϵₓ=$(ϵₓ), ϵᵤ=$(ϵᵤ)")
